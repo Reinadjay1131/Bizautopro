@@ -54,8 +54,8 @@ for ($i = 6; $i >= 0; $i--) {
     $personal_query = $pdo->prepare("
         SELECT 
             (SELECT COUNT(*) FROM outbound_sales WHERE user_id = ? AND DATE(deduction_date) = ?) +
-            (SELECT COUNT(*) FROM leads WHERE user_id = ? AND DATE(created_at) = ?) +
-            (SELECT COUNT(*) FROM workflows WHERE user_id = ? AND DATE(updated_at) = ? AND status = 'completed') as total_activity
+            (SELECT COUNT(*) FROM leads WHERE created_by = ? AND DATE(created_at) = ?) +
+            (SELECT COUNT(*) FROM workflows WHERE created_by = ? AND DATE(created_at) = ? AND status = 'completed') as total_activity
     ");
     $personal_query->execute([$user_id, $date, $user_id, $date, $user_id, $date]);
     $personal_performance_data[] = $personal_query->fetchColumn() ?: 0;
@@ -65,7 +65,7 @@ for ($i = 6; $i >= 0; $i--) {
 $task_data = $pdo->prepare("
     SELECT status, COUNT(*) as count 
     FROM workflows 
-    WHERE user_id = ? 
+    WHERE created_by = ? 
     GROUP BY status
 ");
 $task_data->execute([$user_id]);

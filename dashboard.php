@@ -103,9 +103,9 @@ for ($i = 6; $i >= 0; $i--) {
         SELECT COUNT(DISTINCT user_id) FROM (
             SELECT user_id FROM outbound_sales WHERE DATE(deduction_date) = ?
             UNION 
-            SELECT user_id FROM leads WHERE DATE(created_at) = ?
+            SELECT created_by as user_id FROM leads WHERE DATE(created_at) = ?
             UNION
-            SELECT user_id FROM workflows WHERE DATE(created_at) = ?
+            SELECT created_by as user_id FROM workflows WHERE DATE(created_at) = ?
         ) as combined_activity
     ");
     $activity_query->execute([$date, $date, $date]);
