@@ -600,3 +600,39 @@ body {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* Clickable Metric Cards */
+.clickable-metric {
+  transition: all 0.3s ease !important;
+  position: relative;
+  cursor: pointer !important;
+}
+
+.clickable-metric:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  border-color: var(--primary-blue) !important;
+}
+
+.clickable-metric:active {
+  transform: translateY(0) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.clickable-metric::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, var(--primary-blue)0%, var(--primary-blue)0%);
+  opacity: 0;
+  border-radius: var(--radius-md);
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.clickable-metric:hover::before {
+  opacity: 0.02;
+}

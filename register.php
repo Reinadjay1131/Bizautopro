@@ -1,6 +1,8 @@
 <?php
 session_start();
 require 'config.php';
+require_once 'email/EmailService.php';
+require_once 'email/FileEmailService.php';
 
 // Redirect if already logged in
 if (isset($_SESSION['user_id'])) {
@@ -14,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = trim($_POST['email']);
         $password = $_POST['password'];
         $password_confirm = $_POST['password_confirm'] ?? '';
+        $role = $_POST['role'] ?? '';
         
         // Validation
         if (empty($username)) {
@@ -31,6 +34,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($password !== $password_confirm) {
             throw new Exception("Passwords do not match");
         }
+        if (empty($role)) {
+            throw new Exception("Role selection is required");
+        }
+        
+        // Validate role - exclude admin role
+        $allowed_roles = ['employee', 'manager', 'inventory_manager'];
+        if (!in_array($role, $allowed_roles)) {
+            throw new Exception("Invalid role selected");
+        }
         
         // Check if username exists
         $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ? OR email = ?");
@@ -39,8 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("Username or email already exists");
         }
         
-        // Only allow employee registration through this form
-        $role = 'employee'; // Default role
+        // Use selected role (admin role is excluded from form options)
         $status = 'pending'; // Requires admin approval
         
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
@@ -48,7 +59,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("INSERT INTO users (username, password, email, role, status) VALUES (?, ?, ?, ?, ?)");
         $stmt->execute([$username, $hashed_password, $email, $role, $status]);
         
-        $_SESSION['success'] = "Registration submitted! Please wait for admin approval.";
+        // Send email notifications (using file-based service for local testing)
+        try {
+            $emailService = new FileEmailService(); // Using file-based service for local testing
+            // Notify admins about new registration
+            $emailService->notifyAdminNewRegistration($username, $email, $role);
+        } catch (Exception $emailError) {
+            // Log email error but don't fail registration
+            error_log("Email notification failed: " . $emailError->getMessage());
+        }
+        
+        $_SESSION['success'] = "Registration submitted successfully! Please wait for admin approval.";
         header("Location: login.php");
         exit;
     } catch (Exception $e) {
@@ -61,9 +82,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employee Registration | BizAutoPro</title>
+    <title>Staff Registration | BizAutoPro</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <?php 
+    require_once 'includes/theme-loader.php';
+    loadThemeSystem();
+    ?>
     <style>
         .auth-container {
             max-width: 500px;
@@ -109,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="brand-logo">
                     <i class="bi bi-shop"></i>
                 </div>
-                <h2>Employee Registration</h2>
+                <h2>Staff Registration</h2>
                 <p class="text-muted">All registrations require admin approval</p>
             </div>
 
@@ -141,6 +166,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <div class="invalid-feedback">Please provide a valid email</div>
                         </div>
                     </div>
+                </div>
+                
+                <div class="form-floating mb-3">
+                    <select class="form-select" id="role" name="role" required>
+                        <option value="">Choose your role...</option>
+                        <option value="employee" <?= ($_POST['role'] ?? '') === 'employee' ? 'selected' : '' ?>>Employee</option>
+                        <option value="manager" <?= ($_POST['role'] ?? '') === 'manager' ? 'selected' : '' ?>>Manager</option>
+                        <option value="inventory_manager" <?= ($_POST['role'] ?? '') === 'inventory_manager' ? 'selected' : '' ?>>Inventory Manager</option>
+                    </select>
+                    <label for="role"><i class="bi bi-person-badge"></i> Role</label>
+                    <div class="invalid-feedback">Please select a role</div>
                 </div>
                 
                 <div class="form-floating mb-3">
@@ -223,5 +259,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     })()
     </script>
+    
+    <?php addSimpleThemeToggle(); ?>
+    
+    <!-- Copyright Footer -->
+    <footer class="text-center py-3 mt-5" style="background-color: #f8f9fa; border-top: 1px solid #dee2e6;">
+        <small class="text-muted">Created by NOYB FUNDAMENTAL 2025 ©</small>
+    </footer>
 </body>
 </html>

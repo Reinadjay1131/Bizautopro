@@ -5,7 +5,7 @@ $users = [
     [
         'username' => 'Fidelia',
         'password' => password_hash('whatwhat567', PASSWORD_BCRYPT),
-        'email' => 'nobfundamental101@gmail.com',
+        'email' => 'ibeachuhenry@gmail.com',
         'role' => 'admin',
         'status' => 'approved'
     ],

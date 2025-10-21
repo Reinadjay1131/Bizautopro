@@ -27,6 +27,10 @@ $low_stock = $pdo->query("SELECT * FROM inventory WHERE quantity < reorder_level
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="assets/css/modern.css">
+    <?php 
+    require_once 'includes/theme-loader.php';
+    loadThemeSystem();
+    ?>
     <style>
         .inventory-table {
             background: white;
@@ -239,7 +243,7 @@ $low_stock = $pdo->query("SELECT * FROM inventory WHERE quantity < reorder_level
                         </div>
                         <div class="table-cell">
                             <span style="font-weight: 600; color: var(--text-dark);">
-                                $<?= number_format($item['price'], 2) ?>
+                                ₦<?= number_format($item['price'], 2) ?>
                             </span>
                         </div>
                         <div class="table-cell">
@@ -295,5 +299,10 @@ $low_stock = $pdo->query("SELECT * FROM inventory WHERE quantity < reorder_level
             });
         });
     </script>
+    
+    <!-- Copyright Footer -->
+    <footer class="text-center py-3 mt-5" style="background-color: #f8f9fa; border-top: 1px solid #dee2e6;">
+        <small class="text-muted">Created by NOYB FUNDAMENTAL 2025 ©</small>
+    </footer>
 </body>
 </html>

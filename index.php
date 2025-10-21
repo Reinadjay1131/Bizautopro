@@ -341,7 +341,6 @@ if (isset($_SESSION['user_id'])) {
     <footer class="footer-section">
         <div class="modern-container">
             <p style="margin: 0; opacity: 0.8;">
-                &copy; 2025 BizAutoPro. All rights reserved. | 
                 <a href="#" style="color: var(--accent-blue);">Privacy Policy</a> | 
                 <a href="#" style="color: var(--accent-blue);">Terms of Service</a>
             </p>
@@ -382,5 +381,10 @@ if (isset($_SESSION['user_id'])) {
             });
         });
     </script>
+    
+    <!-- Copyright Footer -->
+    <footer class="text-center py-3 mt-5" style="background-color: #f8f9fa; border-top: 1px solid #dee2e6;">
+        <small class="text-muted">Created by NOYB FUNDAMENTAL 2025 ©</small>
+    </footer>
 </body>
 </html>

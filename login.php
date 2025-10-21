@@ -16,13 +16,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user = $stmt->fetch();
     
     if ($user && password_verify($password, $user['password'])) {
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['username'] = $user['username'];
-        $_SESSION['role'] = $user['role'];
-        $_SESSION['last_login'] = date('Y-m-d H:i:s');
-        
-        header("Location: " . ($user['role'] === 'admin' ? "dashboard.php" : "dashboard_me.php"));
-        exit;
+        // Check if user is approved
+        if ($user['status'] !== 'approved') {
+            if ($user['status'] === 'pending') {
+                $error = "Your account is pending admin approval. Please wait for approval before logging in.";
+            } elseif ($user['status'] === 'rejected') {
+                $error = "Your account has been rejected. Please contact an administrator.";
+            } else {
+                $error = "Your account is not active. Please contact an administrator.";
+            }
+        } else {
+            // User is approved, proceed with login
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['role'] = $user['role'];
+            $_SESSION['last_login'] = date('Y-m-d H:i:s');
+            
+            header("Location: " . ($user['role'] === 'admin' ? "dashboard.php" : "dashboard_me.php"));
+            exit;
+        }
     } else {
         $error = "Invalid username or password";
     }
@@ -39,6 +51,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="assets/css/modern.css">
+    <?php 
+    require_once 'includes/theme-loader.php';
+    loadThemeSystem();
+    ?>
     <style>
         .auth-container {
             min-height: 100vh;
@@ -225,5 +241,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         });
     </script>
+    
+    <?php addSimpleThemeToggle(); ?>
+    
+    <!-- Copyright Footer -->
+    <footer class="text-center py-3 mt-5" style="background-color: #f8f9fa; border-top: 1px solid #dee2e6;">
+        <small class="text-muted">Created by NOYB FUNDAMENTAL 2025 ©</small>
+    </footer>
 </body>
 </html>

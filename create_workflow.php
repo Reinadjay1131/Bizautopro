@@ -236,5 +236,10 @@ $recent_workflows = $pdo->query("
     // Auto-focus title field
     document.getElementById('title')?.focus();
     </script>
+    
+    <!-- Copyright Footer -->
+    <footer class="text-center py-3 mt-5" style="background-color: #f8f9fa; border-top: 1px solid #dee2e6;">
+        <small class="text-muted">Created by NOYB FUNDAMENTAL 2025 ©</small>
+    </footer>
 </body>
 </html>
