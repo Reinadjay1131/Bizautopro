@@ -63,6 +63,84 @@ $leads_data = $pdo->query("
     FROM leads 
     GROUP BY status
 ")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+// Get inventory distribution data
+$inventory_data = $pdo->query("
+    SELECT 
+        CASE 
+            WHEN quantity <= 10 THEN 'Low Stock'
+            WHEN quantity <= 50 THEN 'Medium Stock' 
+            WHEN quantity <= 100 THEN 'High Stock'
+            ELSE 'Overstocked'
+        END as stock_level,
+        COUNT(*) as count
+    FROM inventory 
+    GROUP BY 
+        CASE 
+            WHEN quantity <= 10 THEN 'Low Stock'
+            WHEN quantity <= 50 THEN 'Medium Stock'
+            WHEN quantity <= 100 THEN 'High Stock'
+            ELSE 'Overstocked'
+        END
+")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+// Get workflow performance data
+$workflow_data = $pdo->query("
+    SELECT status, COUNT(*) as count 
+    FROM workflows 
+    GROUP BY status
+")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+// Get user activity data (last 7 days)
+$user_activity_data = [];
+$user_activity_labels = [];
+for ($i = 6; $i >= 0; $i--) {
+    $date = date('Y-m-d', strtotime("-$i days"));
+    $user_activity_labels[] = date('M j', strtotime($date));
+    
+    // Count unique users who performed actions (outbound_sales, leads, workflows)
+    $activity_query = $pdo->prepare("
+        SELECT COUNT(DISTINCT user_id) FROM (
+            SELECT user_id FROM outbound_sales WHERE DATE(deduction_date) = ?
+            UNION 
+            SELECT user_id FROM leads WHERE DATE(created_at) = ?
+            UNION
+            SELECT user_id FROM workflows WHERE DATE(created_at) = ?
+        ) as combined_activity
+    ");
+    $activity_query->execute([$date, $date, $date]);
+    $user_activity_data[] = $activity_query->fetchColumn() ?: 0;
+}
+
+// Get performance metrics data (for radar chart)
+$performance_metrics = [
+    'Sales' => $pdo->query("SELECT COUNT(*) FROM outbound_sales WHERE DATE(deduction_date) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)")->fetchColumn(),
+    'Leads' => $pdo->query("SELECT COUNT(*) FROM leads WHERE status = 'converted'")->fetchColumn(),
+    'Inventory' => $pdo->query("SELECT COUNT(*) FROM inventory WHERE quantity > 10")->fetchColumn(),
+    'Workflows' => $pdo->query("SELECT COUNT(*) FROM workflows WHERE status = 'completed'")->fetchColumn(),
+    'Users' => $pdo->query("SELECT COUNT(*) FROM users WHERE status = 'approved'")->fetchColumn()
+];
+
+// Normalize performance metrics to 0-100 scale
+$max_value = max($performance_metrics);
+if ($max_value > 0) {
+    foreach ($performance_metrics as $key => $value) {
+        $performance_metrics[$key] = round(($value / $max_value) * 100);
+    }
+}
+
+// Get predictive analytics data (revenue forecast)
+$predictive_data = [];
+$predictive_labels = [];
+for ($i = 0; $i < 7; $i++) {
+    $date = date('Y-m-d', strtotime("+$i days"));
+    $predictive_labels[] = date('M j', strtotime($date));
+    
+    // Simple forecasting based on average of last 7 days with trend
+    $avg_revenue = array_sum($daily_revenue_data) / count($daily_revenue_data);
+    $trend = ($daily_revenue_data[count($daily_revenue_data)-1] - $daily_revenue_data[0]) / count($daily_revenue_data);
+    $predictive_data[] = round($avg_revenue + ($trend * $i), 2);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -538,6 +616,55 @@ $leads_data = $pdo->query("
                     data: <?= json_encode(array_values($leads_data)) ?>,
                     backgroundColor: ['#10b981', '#f59e0b', '#3b82f6', '#ef4444']
                 }]
+            },
+            inventory: {
+                labels: <?= json_encode(array_keys($inventory_data)) ?>,
+                datasets: [{
+                    data: <?= json_encode(array_values($inventory_data)) ?>,
+                    backgroundColor: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6']
+                }]
+            },
+            workflow: {
+                labels: <?= json_encode(array_keys($workflow_data)) ?>,
+                datasets: [{
+                    data: <?= json_encode(array_values($workflow_data)) ?>,
+                    backgroundColor: ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b']
+                }]
+            },
+            userActivity: {
+                labels: <?= json_encode($user_activity_labels) ?>,
+                datasets: [{
+                    label: 'Active Users',
+                    data: <?= json_encode($user_activity_data) ?>,
+                    backgroundColor: '#06b6d4',
+                    borderColor: '#0891b2',
+                    borderWidth: 2
+                }]
+            },
+            performance: {
+                labels: <?= json_encode(array_keys($performance_metrics)) ?>,
+                datasets: [{
+                    label: 'Performance Score',
+                    data: <?= json_encode(array_values($performance_metrics)) ?>,
+                    backgroundColor: 'rgba(79, 70, 229, 0.2)',
+                    borderColor: '#4f46e5',
+                    pointBackgroundColor: '#4f46e5',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: '#4f46e5'
+                }]
+            },
+            predictive: {
+                labels: <?= json_encode($predictive_labels) ?>,
+                datasets: [{
+                    label: 'Predicted Revenue (₦)',
+                    data: <?= json_encode($predictive_data) ?>,
+                    borderColor: '#8b5cf6',
+                    backgroundColor: '#8b5cf620',
+                    borderDash: [5, 5],
+                    tension: 0.4,
+                    fill: false
+                }]
             }
         };
 
@@ -619,6 +746,152 @@ $leads_data = $pdo->query("
                 }
             } else {
                 console.error('❌ Leads chart container not found');
+            }
+
+            // Inventory Chart
+            const inventoryCtx = document.getElementById('inventoryChart');
+            if (inventoryCtx) {
+                try {
+                    const inventoryChart = new Chart(inventoryCtx, {
+                        type: 'pie',
+                        data: realChartData.inventory,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Inventory Stock Levels'
+                                }
+                            }
+                        }
+                    });
+                    console.log('✅ Inventory chart loaded with real data:', inventoryChart);
+                } catch (error) {
+                    console.error('❌ Inventory chart error:', error);
+                }
+            }
+
+            // Workflow Chart
+            const workflowCtx = document.getElementById('workflowChart');
+            if (workflowCtx) {
+                try {
+                    const workflowChart = new Chart(workflowCtx, {
+                        type: 'bar',
+                        data: realChartData.workflow,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Workflow Status Distribution'
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                    console.log('✅ Workflow chart loaded with real data:', workflowChart);
+                } catch (error) {
+                    console.error('❌ Workflow chart error:', error);
+                }
+            }
+
+            // User Activity Chart
+            const userActivityCtx = document.getElementById('userActivityChart');
+            if (userActivityCtx) {
+                try {
+                    const userActivityChart = new Chart(userActivityCtx, {
+                        type: 'bar',
+                        data: realChartData.userActivity,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Daily Active Users'
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                    console.log('✅ User Activity chart loaded with real data:', userActivityChart);
+                } catch (error) {
+                    console.error('❌ User Activity chart error:', error);
+                }
+            }
+
+            // Performance Radar Chart
+            const performanceCtx = document.getElementById('performanceChart');
+            if (performanceCtx) {
+                try {
+                    const performanceChart = new Chart(performanceCtx, {
+                        type: 'radar',
+                        data: realChartData.performance,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Performance Metrics'
+                                }
+                            },
+                            scales: {
+                                r: {
+                                    beginAtZero: true,
+                                    max: 100
+                                }
+                            }
+                        }
+                    });
+                    console.log('✅ Performance chart loaded with real data:', performanceChart);
+                } catch (error) {
+                    console.error('❌ Performance chart error:', error);
+                }
+            }
+
+            // Predictive Analytics Chart
+            const predictiveCtx = document.getElementById('predictiveChart');
+            if (predictiveCtx) {
+                try {
+                    const predictiveChart = new Chart(predictiveCtx, {
+                        type: 'line',
+                        data: realChartData.predictive,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Revenue Forecast (Next 7 Days)'
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        callback: function(value) {
+                                            return '₦' + value.toLocaleString();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    console.log('✅ Predictive chart loaded with real data:', predictiveChart);
+                } catch (error) {
+                    console.error('❌ Predictive chart error:', error);
+                }
             }
         }
 

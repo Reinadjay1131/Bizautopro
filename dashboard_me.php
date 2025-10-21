@@ -42,6 +42,102 @@ $personal_revenue_change_text = $personal_revenue_change >= 0 ? '↗ +' . number
 $inventory_alerts = $pdo->query("SELECT COUNT(*) FROM inventory")->fetchColumn();
 $pending_tasks = $pdo->query("SELECT COUNT(*) FROM workflows WHERE status = 'pending'")->fetchColumn();
 $new_leads = $pdo->query("SELECT COUNT(*) FROM leads WHERE status = 'new'")->fetchColumn();
+
+// Get personal performance data (last 7 days)
+$personal_performance_data = [];
+$personal_performance_labels = [];
+for ($i = 6; $i >= 0; $i--) {
+    $date = date('Y-m-d', strtotime("-$i days"));
+    $personal_performance_labels[] = date('M j', strtotime($date));
+    
+    // Count personal activities (sales, leads created, tasks completed)
+    $personal_query = $pdo->prepare("
+        SELECT 
+            (SELECT COUNT(*) FROM outbound_sales WHERE user_id = ? AND DATE(deduction_date) = ?) +
+            (SELECT COUNT(*) FROM leads WHERE user_id = ? AND DATE(created_at) = ?) +
+            (SELECT COUNT(*) FROM workflows WHERE user_id = ? AND DATE(updated_at) = ? AND status = 'completed') as total_activity
+    ");
+    $personal_query->execute([$user_id, $date, $user_id, $date, $user_id, $date]);
+    $personal_performance_data[] = $personal_query->fetchColumn() ?: 0;
+}
+
+// Get task management data
+$task_data = $pdo->prepare("
+    SELECT status, COUNT(*) as count 
+    FROM workflows 
+    WHERE user_id = ? 
+    GROUP BY status
+");
+$task_data->execute([$user_id]);
+$task_analytics = $task_data->fetchAll(PDO::FETCH_KEY_PAIR);
+
+// Role-specific analytics
+$role_specific_data = [];
+if ($_SESSION['role'] === 'manager') {
+    // Team performance data
+    $team_performance = $pdo->prepare("
+        SELECT 
+            u.username,
+            COUNT(DISTINCT os.id) as sales_count,
+            COALESCE(SUM(os.price * os.quantity), 0) as revenue
+        FROM users u
+        LEFT JOIN outbound_sales os ON u.id = os.user_id AND DATE(os.deduction_date) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        WHERE u.role IN ('employee', 'inventory_manager')
+        GROUP BY u.id, u.username
+        LIMIT 5
+    ");
+    $team_performance->execute();
+    $role_specific_data['team'] = $team_performance->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Conversion analytics
+    $conversion_data = $pdo->query("
+        SELECT status, COUNT(*) as count 
+        FROM leads 
+        WHERE DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        GROUP BY status
+    ")->fetchAll(PDO::FETCH_KEY_PAIR);
+    $role_specific_data['conversion'] = $conversion_data;
+    
+} elseif ($_SESSION['role'] === 'inventory_manager') {
+    // Inventory efficiency data
+    $inventory_efficiency = $pdo->query("
+        SELECT 
+            CASE 
+                WHEN quantity <= 10 THEN 'Critical'
+                WHEN quantity <= 30 THEN 'Low'
+                WHEN quantity <= 100 THEN 'Optimal'
+                ELSE 'Excess'
+            END as efficiency_level,
+            COUNT(*) as count
+        FROM inventory
+        GROUP BY 
+            CASE 
+                WHEN quantity <= 10 THEN 'Critical'
+                WHEN quantity <= 30 THEN 'Low'
+                WHEN quantity <= 100 THEN 'Optimal'
+                ELSE 'Excess'
+            END
+    ")->fetchAll(PDO::FETCH_KEY_PAIR);
+    $role_specific_data['inventory'] = $inventory_efficiency;
+    
+    // Cost management data (last 7 days inventory movements)
+    $cost_data = [];
+    $cost_labels = [];
+    for ($i = 6; $i >= 0; $i--) {
+        $date = date('Y-m-d', strtotime("-$i days"));
+        $cost_labels[] = date('M j', strtotime($date));
+        
+        $cost_query = $pdo->prepare("
+            SELECT COALESCE(SUM(price * quantity), 0) 
+            FROM inventory_transactions 
+            WHERE DATE(transaction_date) = ? AND transaction_type = 'outbound'
+        ");
+        $cost_query->execute([$date]);
+        $cost_data[] = $cost_query->fetchColumn() ?: 0;
+    }
+    $role_specific_data['cost_data'] = $cost_data;
+    $role_specific_data['cost_labels'] = $cost_labels;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -459,12 +555,263 @@ $new_leads = $pdo->query("SELECT COUNT(*) FROM leads WHERE status = 'new'")->fet
         </div>
     </div>
 
+    <!-- Chart.js for analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <!-- Personal Analytics JavaScript -->
     <script src="assets/js/theme-manager.js"></script>
-    <script src="assets/js/analytics.js"></script>
     <script>
-        // Personal Analytics Dashboard Class Extension
-        class PersonalAnalyticsDashboard extends AnalyticsDashboard {
+        // Embed personal analytics data from PHP into JavaScript
+        const personalChartData = {
+            performance: {
+                labels: <?= json_encode($personal_performance_labels) ?>,
+                datasets: [{
+                    label: 'Daily Activities',
+                    data: <?= json_encode($personal_performance_data) ?>,
+                    borderColor: '#4f46e5',
+                    backgroundColor: '#4f46e520',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            tasks: {
+                labels: <?= json_encode(array_keys($task_analytics)) ?>,
+                datasets: [{
+                    data: <?= json_encode(array_values($task_analytics)) ?>,
+                    backgroundColor: ['#10b981', '#f59e0b', '#3b82f6', '#ef4444']
+                }]
+            }
+            <?php if ($_SESSION['role'] === 'manager'): ?>
+            ,team: {
+                labels: <?= json_encode(array_column($role_specific_data['team'], 'username')) ?>,
+                datasets: [{
+                    label: 'Sales Count',
+                    data: <?= json_encode(array_column($role_specific_data['team'], 'sales_count')) ?>,
+                    backgroundColor: '#06b6d4'
+                }]
+            },
+            conversion: {
+                labels: <?= json_encode(array_keys($role_specific_data['conversion'])) ?>,
+                datasets: [{
+                    data: <?= json_encode(array_values($role_specific_data['conversion'])) ?>,
+                    backgroundColor: ['#10b981', '#f59e0b', '#3b82f6', '#ef4444']
+                }]
+            }
+            <?php elseif ($_SESSION['role'] === 'inventory_manager'): ?>
+            ,inventory: {
+                labels: <?= json_encode(array_keys($role_specific_data['inventory'])) ?>,
+                datasets: [{
+                    data: <?= json_encode(array_values($role_specific_data['inventory'])) ?>,
+                    backgroundColor: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6']
+                }]
+            },
+            cost: {
+                labels: <?= json_encode($role_specific_data['cost_labels']) ?>,
+                datasets: [{
+                    label: 'Daily Costs (₦)',
+                    data: <?= json_encode($role_specific_data['cost_data']) ?>,
+                    borderColor: '#f59e0b',
+                    backgroundColor: '#f59e0b20',
+                    tension: 0.4,
+                    fill: true
+                }]
+            }
+            <?php endif; ?>
+        };
+
+        // Initialize personal analytics dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePersonalCharts();
+        });
+
+        function initializePersonalCharts() {
+            console.log('📊 Loading personal charts with real data:', personalChartData);
+            
+            // Personal Performance Chart
+            const personalCtx = document.getElementById('personalPerformanceChart');
+            if (personalCtx) {
+                try {
+                    new Chart(personalCtx, {
+                        type: 'line',
+                        data: personalChartData.performance,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'My Daily Performance'
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                    console.log('✅ Personal performance chart loaded');
+                } catch (error) {
+                    console.error('❌ Personal performance chart error:', error);
+                }
+            }
+
+            // Task Analytics Chart
+            const taskCtx = document.getElementById('taskAnalyticsChart');
+            if (taskCtx) {
+                try {
+                    new Chart(taskCtx, {
+                        type: 'doughnut',
+                        data: personalChartData.tasks,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'My Task Distribution'
+                                }
+                            }
+                        }
+                    });
+                    console.log('✅ Task analytics chart loaded');
+                } catch (error) {
+                    console.error('❌ Task analytics chart error:', error);
+                }
+            }
+
+            <?php if ($_SESSION['role'] === 'manager'): ?>
+            // Team Performance Chart
+            const teamCtx = document.getElementById('teamPerformanceChart');
+            if (teamCtx) {
+                try {
+                    new Chart(teamCtx, {
+                        type: 'bar',
+                        data: personalChartData.team,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Team Sales Performance'
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                    console.log('✅ Team performance chart loaded');
+                } catch (error) {
+                    console.error('❌ Team performance chart error:', error);
+                }
+            }
+
+            // Conversion Chart
+            const conversionCtx = document.getElementById('conversionChart');
+            if (conversionCtx) {
+                try {
+                    new Chart(conversionCtx, {
+                        type: 'pie',
+                        data: personalChartData.conversion,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Lead Conversion Status'
+                                }
+                            }
+                        }
+                    });
+                    console.log('✅ Conversion chart loaded');
+                } catch (error) {
+                    console.error('❌ Conversion chart error:', error);
+                }
+            }
+            <?php elseif ($_SESSION['role'] === 'inventory_manager'): ?>
+            // Inventory Efficiency Chart
+            const inventoryCtx = document.getElementById('inventoryEfficiencyChart');
+            if (inventoryCtx) {
+                try {
+                    new Chart(inventoryCtx, {
+                        type: 'doughnut',
+                        data: personalChartData.inventory,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Inventory Efficiency Levels'
+                                }
+                            }
+                        }
+                    });
+                    console.log('✅ Inventory efficiency chart loaded');
+                } catch (error) {
+                    console.error('❌ Inventory efficiency chart error:', error);
+                }
+            }
+
+            // Cost Management Chart
+            const costCtx = document.getElementById('costManagementChart');
+            if (costCtx) {
+                try {
+                    new Chart(costCtx, {
+                        type: 'line',
+                        data: personalChartData.cost,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Daily Cost Management'
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        callback: function(value) {
+                                            return '₦' + value.toLocaleString();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    console.log('✅ Cost management chart loaded');
+                } catch (error) {
+                    console.error('❌ Cost management chart error:', error);
+                }
+            }
+            <?php endif; ?>
+        }
+
+        // Auto-refresh dashboard every 5 minutes
+        setTimeout(() => location.reload(), 300000);
+        
+        // Enhanced loading states for buttons
+        document.querySelectorAll('.btn-modern').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (!this.href?.includes('#') && !this.onclick) {
+                    this.classList.add('loading');
+                    this.innerHTML = '<div class="spinner"></div> Loading...';
+                }
+            });
+        });
+        
+        // Add animation delays for metric cards
+        document.querySelectorAll('.metric-card').forEach((card, index) => {
+            card.style.animationDelay = `${index * 0.1}s`;
+            card.classList.add('slide-up');
+        });
             constructor() {
                 super();
                 this.userRole = '<?= $_SESSION['role'] ?>';
@@ -700,38 +1047,6 @@ $new_leads = $pdo->query("SELECT COUNT(*) FROM leads WHERE status = 'new'")->fet
             convertObjectToCSV(data) {
                 let csv = 'Metric,Value\n';
                 csv += `User ID,${data.userId}\n`;
-                csv += `Role,${data.role}\n`;
-                csv += `Export Date,${new Date().toLocaleDateString()}\n`;
-                return csv;
-            }
-        }
-
-        // Initialize Personal Analytics Dashboard
-        let personalAnalytics;
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            personalAnalytics = new PersonalAnalyticsDashboard();
-            window.personalAnalytics = personalAnalytics;
-        });
-
-        // Auto-refresh dashboard every 5 minutes
-        setTimeout(() => location.reload(), 300000);
-        
-        // Enhanced loading states for buttons
-        document.querySelectorAll('.btn-modern').forEach(btn => {
-            btn.addEventListener('click', function() {
-                if (!this.href?.includes('#') && !this.onclick) {
-                    this.classList.add('loading');
-                    this.innerHTML = '<div class="spinner"></div> Loading...';
-                }
-            });
-        });
-        
-        // Add animation delays for metric cards
-        document.querySelectorAll('.metric-card').forEach((card, index) => {
-            card.style.animationDelay = `${index * 0.1}s`;
-            card.classList.add('slide-up');
-        });
     </script>
     
     <!-- Copyright Footer -->
