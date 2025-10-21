@@ -513,6 +513,9 @@ $leads_data = $pdo->query("
         </div>
     </div>
 
+    <!-- Chart.js for analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <!-- Analytics JavaScript -->
     <script src="assets/js/theme-manager.js"></script>
     <script>
@@ -548,55 +551,74 @@ $leads_data = $pdo->query("
 
         function initializeChartsWithRealData() {
             console.log('📊 Loading charts with real database data:', realChartData);
+            console.log('🔍 Chart.js available:', typeof Chart !== 'undefined');
+            
+            // Check if chart containers exist
+            const revenueContainer = document.getElementById('revenueChart');
+            const leadsContainer = document.getElementById('leadsChart');
+            console.log('🎯 Revenue chart container:', revenueContainer);
+            console.log('🎯 Leads chart container:', leadsContainer);
             
             // Revenue Chart
             const revenueCtx = document.getElementById('revenueChart');
             if (revenueCtx) {
-                new Chart(revenueCtx, {
-                    type: 'line',
-                    data: realChartData.revenue,
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: 'Daily Revenue Trends'
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: {
-                                    callback: function(value) {
-                                        return '₦' + value.toLocaleString();
+                try {
+                    const revenueChart = new Chart(revenueCtx, {
+                        type: 'line',
+                        data: realChartData.revenue,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Daily Revenue Trends'
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        callback: function(value) {
+                                            return '₦' + value.toLocaleString();
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                });
-                console.log('✅ Revenue chart loaded with real data');
+                    });
+                    console.log('✅ Revenue chart loaded with real data:', revenueChart);
+                } catch (error) {
+                    console.error('❌ Revenue chart error:', error);
+                }
+            } else {
+                console.error('❌ Revenue chart container not found');
             }
 
             // Leads Chart  
             const leadsCtx = document.getElementById('leadsChart');
             if (leadsCtx) {
-                new Chart(leadsCtx, {
-                    type: 'doughnut',
-                    data: realChartData.leads,
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: 'Lead Status Distribution'
+                try {
+                    const leadsChart = new Chart(leadsCtx, {
+                        type: 'doughnut',
+                        data: realChartData.leads,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Lead Status Distribution'
+                                }
                             }
                         }
-                    }
-                });
-                console.log('✅ Leads chart loaded with real data');
+                    });
+                    console.log('✅ Leads chart loaded with real data:', leadsChart);
+                } catch (error) {
+                    console.error('❌ Leads chart error:', error);
+                }
+            } else {
+                console.error('❌ Leads chart container not found');
             }
         }
 
