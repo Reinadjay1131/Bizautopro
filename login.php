@@ -34,108 +34,196 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login | BizAutoPro</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="assets/css/modern.css">
     <style>
         .auth-container {
-            max-width: 400px;
-            margin: 0 auto;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-            background-color: white;
-        }
-        body {
-            background-color: #f8f9fa;
+            min-height: 100vh;
             display: flex;
             align-items: center;
-            min-height: 100vh;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+            padding: var(--space-lg);
         }
-        .brand-header {
+        
+        .auth-card {
+            background: white;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-xl);
+            padding: var(--space-2xl);
+            width: 100%;
+            max-width: 420px;
+            animation: slideUp 0.6s ease-out;
+        }
+        
+        .auth-header {
             text-align: center;
-            margin-bottom: 2rem;
+            margin-bottom: var(--space-2xl);
         }
-        .brand-logo {
-            font-size: 2.5rem;
-            color: #0d6efd;
-            margin-bottom: 1rem;
+        
+        .auth-logo {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, var(--primary-blue), var(--accent-blue));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto var(--space-lg);
+            color: white;
+            font-size: 1.5rem;
         }
-        .form-floating label {
-            padding: 1rem 0.75rem;
+        
+        .auth-title {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: var(--space-xs);
+        }
+        
+        .auth-subtitle {
+            color: var(--text-light);
+            font-size: 0.875rem;
+        }
+        
+        .error-alert {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: var(--space-md);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-lg);
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+        
+        .auth-links {
+            text-align: center;
+            margin-top: var(--space-lg);
+            padding-top: var(--space-lg);
+            border-top: 1px solid var(--medium-gray);
+        }
+        
+        .auth-links a {
+            color: var(--primary-blue);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .auth-links a:hover {
+            color: var(--primary-blue-dark);
+        }
+        
+        .divider {
+            margin: 0 var(--space-sm);
+            color: var(--text-light);
+        }
+        
+        @media (max-width: 480px) {
+            .auth-card {
+                padding: var(--space-xl);
+                margin: var(--space-md);
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="auth-container">
-            <div class="brand-header">
-                <div class="brand-logo">
-                    <i class="bi bi-shop"></i>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <i class="bi bi-grid-3x3-gap-fill"></i>
                 </div>
-                <h2>BizAutoPro</h2>
-                <p class="text-muted">Please sign in to continue</p>
+                <h1 class="auth-title">BizAutoPro</h1>
+                <p class="auth-subtitle">Sign in to access your dashboard</p>
             </div>
 
             <?php if (isset($error)): ?>
-                <div class="alert alert-danger alert-dismissible fade show">
-                    <i class="bi bi-exclamation-triangle"></i> <?= htmlspecialchars($error) ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <div class="error-alert">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <span><?= htmlspecialchars($error) ?></span>
                 </div>
             <?php endif; ?>
 
-            <form method="post" class="needs-validation" novalidate>
-                <div class="form-floating mb-3">
-                    <input type="text" class="form-control" id="username" name="username" 
-                           placeholder="Username" required
-                           value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
-                    <label for="username"><i class="bi bi-person"></i> Username</label>
-                    <div class="invalid-feedback">Please enter your username</div>
+            <form method="post" id="loginForm">
+                <div class="form-group">
+                    <label for="username" class="form-label">
+                        <i class="bi bi-person"></i> Username
+                    </label>
+                    <input type="text" 
+                           id="username" 
+                           name="username" 
+                           class="form-input" 
+                           placeholder="Enter your username"
+                           value="<?= htmlspecialchars($_POST['username'] ?? '') ?>"
+                           required>
                 </div>
                 
-                <div class="form-floating mb-3">
-                    <input type="password" class="form-control" id="password" name="password" 
-                           placeholder="Password" required>
-                    <label for="password"><i class="bi bi-lock"></i> Password</label>
-                    <div class="invalid-feedback">Please enter your password</div>
+                <div class="form-group">
+                    <label for="password" class="form-label">
+                        <i class="bi bi-lock"></i> Password
+                    </label>
+                    <input type="password" 
+                           id="password" 
+                           name="password" 
+                           class="form-input" 
+                           placeholder="Enter your password"
+                           required>
                 </div>
                 
-                <div class="d-grid gap-2 mb-3">
-                    <button type="submit" class="btn btn-primary btn-lg">
-                        <i class="bi bi-box-arrow-in-right"></i> Sign In
-                    </button>
-                </div>
-                
-                <div class="text-center">
-                    <a href="register.php" class="text-decoration-none">Create an account</a>
-                    <span class="mx-2">•</span>
-                    <a href="forgot_password.php" class="text-decoration-none">Forgot password?</a>
-                </div>
-
-                <div class="text-center mb-3">
-                    <a href="index.php" class="btn btn-outline-secondary">
-                        <i class="bi bi-house"></i> Return Home
-                    </a>
-                </div>    
+                <button type="submit" class="btn-modern btn-primary btn-lg" style="width: 100%;">
+                    <i class="bi bi-box-arrow-in-right"></i>
+                    Sign In
+                </button>
             </form>
+            
+            <div class="auth-links">
+                <a href="register.php">Create an account</a>
+                <span class="divider">•</span>
+                <a href="password.php">Forgot password?</a>
+            </div>
+            
+            <div class="text-center mt-4">
+                <a href="index.php" class="btn-modern btn-secondary">
+                    <i class="bi bi-house"></i>
+                    Return Home
+                </a>
+            </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    (() => {
-        'use strict'
-        const forms = document.querySelectorAll('.needs-validation')
-        Array.from(forms).forEach(form => {
-            form.addEventListener('submit', event => {
-                if (!form.checkValidity()) {
-                    event.preventDefault()
-                    event.stopPropagation()
-                }
-                form.classList.add('was-validated')
-            }, false)
-        })
-    })()
-    document.getElementById('username')?.focus();
+        // Focus on username field
+        document.getElementById('username')?.focus();
+        
+        // Add form validation
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            
+            if (!username || !password) {
+                e.preventDefault();
+                alert('Please fill in all fields');
+                return false;
+            }
+            
+            // Add loading state
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.classList.add('loading');
+            submitBtn.innerHTML = '<div class="spinner"></div> Signing in...';
+        });
+        
+        // Add enter key support
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+            }
+        });
     </script>
 </body>
 </html>
