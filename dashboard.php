@@ -44,6 +44,25 @@ $inventory_alerts = $pdo->query("SELECT COUNT(*) FROM inventory")->fetchColumn()
 $pending_tasks = $pdo->query("SELECT COUNT(*) FROM workflows WHERE status = 'pending'")->fetchColumn();
 $new_leads = $pdo->query("SELECT COUNT(*) FROM leads WHERE status = 'new'")->fetchColumn();
 $pending_users = $pdo->query("SELECT COUNT(*) FROM users WHERE status = 'pending'")->fetchColumn();
+
+// Get daily revenue data for charts
+$daily_revenue_data = [];
+$daily_revenue_labels = [];
+for ($i = 6; $i >= 0; $i--) {
+    $date = date('Y-m-d', strtotime("-$i days"));
+    $daily_revenue_labels[] = date('M j', strtotime($date));
+    
+    $revenue_query = $pdo->prepare("SELECT COALESCE(SUM(price * quantity), 0) FROM outbound_sales WHERE DATE(deduction_date) = ?");
+    $revenue_query->execute([$date]);
+    $daily_revenue_data[] = $revenue_query->fetchColumn() ?: 0;
+}
+
+// Get leads data for charts
+$leads_data = $pdo->query("
+    SELECT status, COUNT(*) as count 
+    FROM leads 
+    GROUP BY status
+")->fetchAll(PDO::FETCH_KEY_PAIR);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -496,15 +515,90 @@ $pending_users = $pdo->query("SELECT COUNT(*) FROM users WHERE status = 'pending
 
     <!-- Analytics JavaScript -->
     <script src="assets/js/theme-manager.js"></script>
-    <script src="assets/js/analytics.js"></script>
     <script>
-        // Initialize analytics dashboard
+        // Embed real data from PHP into JavaScript
+        const realChartData = {
+            revenue: {
+                labels: <?= json_encode($daily_revenue_labels) ?>,
+                datasets: [{
+                    label: 'Daily Revenue (₦)',
+                    data: <?= json_encode(array_map('floatval', $daily_revenue_data)) ?>,
+                    borderColor: '#4f46e5',
+                    backgroundColor: '#4f46e520',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            leads: {
+                labels: <?= json_encode(array_keys($leads_data)) ?>,
+                datasets: [{
+                    data: <?= json_encode(array_values($leads_data)) ?>,
+                    backgroundColor: ['#10b981', '#f59e0b', '#3b82f6', '#ef4444']
+                }]
+            }
+        };
+
+        // Initialize analytics dashboard with real data
         let analytics;
         
         document.addEventListener('DOMContentLoaded', function() {
-            analytics = new AnalyticsDashboard();
-            window.analytics = analytics;
+            // Initialize charts with real data immediately
+            initializeChartsWithRealData();
         });
+
+        function initializeChartsWithRealData() {
+            console.log('📊 Loading charts with real database data:', realChartData);
+            
+            // Revenue Chart
+            const revenueCtx = document.getElementById('revenueChart');
+            if (revenueCtx) {
+                new Chart(revenueCtx, {
+                    type: 'line',
+                    data: realChartData.revenue,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Daily Revenue Trends'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '₦' + value.toLocaleString();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log('✅ Revenue chart loaded with real data');
+            }
+
+            // Leads Chart  
+            const leadsCtx = document.getElementById('leadsChart');
+            if (leadsCtx) {
+                new Chart(leadsCtx, {
+                    type: 'doughnut',
+                    data: realChartData.leads,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Lead Status Distribution'
+                            }
+                        }
+                    }
+                });
+                console.log('✅ Leads chart loaded with real data');
+            }
+        }
 
         // Auto-refresh dashboard every 5 minutes
         setTimeout(() => location.reload(), 300000);
@@ -524,17 +618,6 @@ $pending_users = $pdo->query("SELECT COUNT(*) FROM users WHERE status = 'pending
             card.style.animationDelay = `${index * 0.1}s`;
             card.classList.add('slide-up');
         });
-
-        // Export all analytics data function
-        window.exportAllData = function() {
-            if (window.analytics) {
-                ['revenue', 'inventory', 'leads', 'workflow'].forEach(chartType => {
-                    setTimeout(() => {
-                        window.analytics.exportChartData(chartType);
-                    }, 100 * ['revenue', 'inventory', 'leads', 'workflow'].indexOf(chartType));
-                });
-            }
-        };
     </script>
     
     <!-- Copyright Footer -->
