@@ -61,15 +61,68 @@ for ($i = 6; $i >= 0; $i--) {
     $personal_performance_data[] = $personal_query->fetchColumn() ?: 0;
 }
 
-// Get task management data
+// Get task management data - Personal workflow analytics
 $task_data = $pdo->prepare("
     SELECT status, COUNT(*) as count 
     FROM workflows 
-    WHERE created_by = ? 
+    WHERE assigned_to = ? OR completed_by = ?
     GROUP BY status
 ");
-$task_data->execute([$user_id]);
+$task_data->execute([$user_id, $user_id]);
 $task_analytics = $task_data->fetchAll(PDO::FETCH_KEY_PAIR);
+
+// Enhanced Personal Workflow Analytics
+$personal_workflow_analytics = [];
+
+// Personal completion metrics
+$personal_completion = $pdo->prepare("
+    SELECT 
+        COUNT(*) as total_assigned,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
+        COUNT(CASE WHEN due_date < NOW() AND status NOT IN ('completed', 'cancelled') THEN 1 END) as overdue,
+        AVG(CASE WHEN status = 'completed' AND actual_hours IS NOT NULL THEN actual_hours END) as avg_completion_time,
+        AVG(CASE WHEN status = 'completed' AND estimated_hours IS NOT NULL AND actual_hours IS NOT NULL 
+            THEN actual_hours - estimated_hours END) as avg_time_variance
+    FROM workflows 
+    WHERE assigned_to = ?
+");
+$personal_completion->execute([$user_id]);
+$completion_metrics = $personal_completion->fetch();
+
+$personal_workflow_analytics['total_assigned'] = $completion_metrics['total_assigned'] ?? 0;
+$personal_workflow_analytics['completed'] = $completion_metrics['completed'] ?? 0;
+$personal_workflow_analytics['completion_rate'] = $completion_metrics['total_assigned'] > 0 ? 
+    round(($completion_metrics['completed'] / $completion_metrics['total_assigned']) * 100, 1) : 0;
+$personal_workflow_analytics['overdue'] = $completion_metrics['overdue'] ?? 0;
+$personal_workflow_analytics['avg_completion_time'] = round($completion_metrics['avg_completion_time'] ?? 0, 1);
+$personal_workflow_analytics['avg_time_variance'] = round($completion_metrics['avg_time_variance'] ?? 0, 1);
+
+// Personal priority distribution
+$priority_stmt = $pdo->prepare("
+    SELECT priority, COUNT(*) as count 
+    FROM workflows 
+    WHERE assigned_to = ?
+    GROUP BY priority
+");
+$priority_stmt->execute([$user_id]);
+$personal_workflow_analytics['priority_distribution'] = $priority_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+// Personal weekly completion trend
+$personal_weekly_data = [];
+$personal_weekly_labels = [];
+for ($i = 6; $i >= 0; $i--) {
+    $date = date('Y-m-d', strtotime("-$i days"));
+    $personal_weekly_labels[] = date('M j', strtotime($date));
+    
+    $daily_completion = $pdo->prepare("
+        SELECT COUNT(*) FROM workflows 
+        WHERE (assigned_to = ? OR completed_by = ?) 
+        AND status = 'completed' 
+        AND DATE(completion_date) = ?
+    ");
+    $daily_completion->execute([$user_id, $user_id, $date]);
+    $personal_weekly_data[] = $daily_completion->fetchColumn() ?: 0;
+}
 
 // Role-specific analytics
 $role_specific_data = [];
@@ -206,6 +259,14 @@ if ($_SESSION['role'] === 'manager') {
             margin-top: 0.25rem;
             font-size: 0.7rem;
         }
+        .performance-indicator.positive {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+        .performance-indicator.negative {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
         /* Compress grid spacing for personal dashboard */
         .grid {
             gap: 0.8rem !important;
@@ -317,30 +378,37 @@ if ($_SESSION['role'] === 'manager') {
 
     <!-- Main Content -->
     <div class="modern-container analytics-dashboard">
-        <!-- Personal Performance Metrics -->
-        <div class="grid grid-cols-3 mb-5">
+        <!-- Personal Workflow Performance Metrics -->
+        <div class="grid grid-cols-4 mb-5">
             <div class="metric-card">
                 <div class="metric-value">₦<?= number_format($personal_revenue, 2) ?></div>
                 <div class="metric-label">Personal Revenue Impact</div>
                 <div class="performance-indicator"><?= $personal_revenue_change_text ?></div>
             </div>
-            <div class="metric-card clickable-metric" onclick="window.location.href='inventory.php'" style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
-                <div class="metric-value"><?= $pending_tasks ?></div>
-                <div class="metric-label">Active Tasks</div>
-                <div class="performance-indicator">85% completion rate</div>
-                <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.5rem;">
-                    <i class="bi bi-cursor-fill"></i> Click to view inventory
+            <div class="metric-card">
+                <div class="metric-value"><?= $personal_workflow_analytics['total_assigned'] ?></div>
+                <div class="metric-label">Assigned Tasks</div>
+                <div class="performance-indicator"><?= $personal_workflow_analytics['completion_rate'] ?>% completion rate</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value"><?= $personal_workflow_analytics['avg_completion_time'] ?>h</div>
+                <div class="metric-label">Avg Completion Time</div>
+                <div class="performance-indicator <?= $personal_workflow_analytics['avg_time_variance'] >= 0 ? 'negative' : 'positive' ?>">
+                    <?= $personal_workflow_analytics['avg_time_variance'] >= 0 ? '+' : '' ?><?= $personal_workflow_analytics['avg_time_variance'] ?>h variance
                 </div>
             </div>
             <div class="metric-card">
-                <div class="metric-value"><?= $new_leads ?></div>
-                <div class="metric-label">Leads Managed</div>
-                <div class="performance-indicator">72% conversion rate</div>
+                <div class="metric-value"><?= $personal_workflow_analytics['overdue'] ?></div>
+                <div class="metric-label">Overdue Tasks</div>
+                <div class="performance-indicator <?= $personal_workflow_analytics['overdue'] > 0 ? 'negative' : 'positive' ?>">
+                    <?= $personal_workflow_analytics['overdue'] > 0 ? 'Action needed' : 'On track' ?>
+                </div>
             </div>
         </div>
 
         <!-- Role-Based Analytics Charts -->
-        <div class="grid grid-cols-2 mb-5">
+        <!-- Personal Analytics Charts -->
+        <div class="grid grid-cols-3 mb-5">
             <!-- Personal Performance Trend -->
             <div class="analytics-card">
                 <div class="analytics-header">
@@ -358,12 +426,25 @@ if ($_SESSION['role'] === 'manager') {
             <div class="analytics-card">
                 <div class="analytics-header">
                     <div>
-                        <h3 class="chart-title">Task Management</h3>
+                        <h3 class="chart-title">Task Status Distribution</h3>
                         <p class="chart-subtitle">Your workflow efficiency and completion rates</p>
                     </div>
                 </div>
                 <div class="chart-container">
                     <canvas id="taskAnalyticsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Priority Distribution -->
+            <div class="analytics-card">
+                <div class="analytics-header">
+                    <div>
+                        <h3 class="chart-title">Task Priorities</h3>
+                        <p class="chart-subtitle">Distribution of assigned task priorities</p>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="priorityChart"></canvas>
                 </div>
             </div>
         </div>
@@ -563,13 +644,13 @@ if ($_SESSION['role'] === 'manager') {
     <script>
         // Embed personal analytics data from PHP into JavaScript
         const personalChartData = {
-            performance: {
-                labels: <?= json_encode($personal_performance_labels) ?>,
+            weeklyCompletion: {
+                labels: <?= json_encode($personal_weekly_labels) ?>,
                 datasets: [{
-                    label: 'Daily Activities',
-                    data: <?= json_encode($personal_performance_data) ?>,
-                    borderColor: '#4f46e5',
-                    backgroundColor: '#4f46e520',
+                    label: 'Completed Tasks',
+                    data: <?= json_encode($personal_weekly_data) ?>,
+                    borderColor: '#10b981',
+                    backgroundColor: '#10b98120',
                     tension: 0.4,
                     fill: true
                 }]
@@ -578,7 +659,14 @@ if ($_SESSION['role'] === 'manager') {
                 labels: <?= json_encode(array_keys($task_analytics)) ?>,
                 datasets: [{
                     data: <?= json_encode(array_values($task_analytics)) ?>,
-                    backgroundColor: ['#10b981', '#f59e0b', '#3b82f6', '#ef4444']
+                    backgroundColor: ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6']
+                }]
+            },
+            priority: {
+                labels: <?= json_encode(array_keys($personal_workflow_analytics['priority_distribution'])) ?>,
+                datasets: [{
+                    data: <?= json_encode(array_values($personal_workflow_analytics['priority_distribution'])) ?>,
+                    backgroundColor: ['#22c55e', '#fbbf24', '#f97316', '#ef4444']
                 }]
             }
             <?php if ($_SESSION['role'] === 'manager'): ?>
@@ -627,20 +715,20 @@ if ($_SESSION['role'] === 'manager') {
         function initializePersonalCharts() {
             console.log('📊 Loading personal charts with real data:', personalChartData);
             
-            // Personal Performance Chart
+            // Personal Performance Chart (Weekly Completion Trend)
             const personalCtx = document.getElementById('personalPerformanceChart');
             if (personalCtx) {
                 try {
                     new Chart(personalCtx, {
                         type: 'line',
-                        data: personalChartData.performance,
+                        data: personalChartData.weeklyCompletion,
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
                             plugins: {
                                 title: {
                                     display: true,
-                                    text: 'My Daily Performance'
+                                    text: 'My Weekly Task Completions'
                                 }
                             },
                             scales: {
@@ -677,6 +765,30 @@ if ($_SESSION['role'] === 'manager') {
                     console.log('✅ Task analytics chart loaded');
                 } catch (error) {
                     console.error('❌ Task analytics chart error:', error);
+                }
+            }
+
+            // Priority Distribution Chart
+            const priorityCtx = document.getElementById('priorityChart');
+            if (priorityCtx) {
+                try {
+                    new Chart(priorityCtx, {
+                        type: 'doughnut',
+                        data: personalChartData.priority,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Task Priority Distribution'
+                                }
+                            }
+                        }
+                    });
+                    console.log('✅ Priority chart loaded');
+                } catch (error) {
+                    console.error('❌ Priority chart error:', error);
                 }
             }
 

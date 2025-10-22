@@ -10,6 +10,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 
 echo "<script>console.log('Dashboard Loaded - Role: ".$_SESSION['role']."')</script>";
 require 'config.php';
+require_once 'includes/theme-loader.php';
 
 $user_id = $_SESSION['user_id'];
 $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
@@ -91,6 +92,128 @@ $workflow_data = $pdo->query("
     GROUP BY status
 ")->fetchAll(PDO::FETCH_KEY_PAIR);
 
+// Enhanced Workflow Analytics
+$workflow_analytics = [];
+
+// Completion Rate Analytics
+$total_workflows = $pdo->query("SELECT COUNT(*) FROM workflows")->fetchColumn();
+$completed_workflows = $pdo->query("SELECT COUNT(*) FROM workflows WHERE status = 'completed'")->fetchColumn();
+$workflow_analytics['completion_rate'] = $total_workflows > 0 ? round(($completed_workflows / $total_workflows) * 100, 1) : 0;
+
+// Priority Distribution
+$workflow_analytics['priority_distribution'] = $pdo->query("
+    SELECT 
+        COALESCE(priority, 'unassigned') as priority, 
+        COUNT(*) as count 
+    FROM workflows 
+    GROUP BY priority
+")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+// Time Tracking Analytics
+$time_analytics = $pdo->query("
+    SELECT 
+        AVG(estimated_hours) as avg_estimated,
+        AVG(actual_hours) as avg_actual,
+        COUNT(CASE WHEN actual_hours IS NOT NULL THEN 1 END) as completed_with_time,
+        AVG(CASE WHEN actual_hours IS NOT NULL AND estimated_hours IS NOT NULL 
+            THEN actual_hours - estimated_hours END) as avg_variance
+    FROM workflows 
+    WHERE status = 'completed'
+")->fetch();
+
+$workflow_analytics['time_tracking'] = [
+    'avg_estimated' => round($time_analytics['avg_estimated'] ?? 0, 1),
+    'avg_actual' => round($time_analytics['avg_actual'] ?? 0, 1),
+    'completion_accuracy' => $time_analytics['completed_with_time'] ?? 0,
+    'avg_variance' => round($time_analytics['avg_variance'] ?? 0, 1)
+];
+
+// Overdue Analytics
+$overdue_analytics = $pdo->query("
+    SELECT 
+        COUNT(*) as total_overdue,
+        AVG(DATEDIFF(NOW(), due_date)) as avg_overdue_days,
+        COUNT(CASE WHEN priority = 'urgent' THEN 1 END) as urgent_overdue,
+        COUNT(CASE WHEN priority = 'high' THEN 1 END) as high_overdue
+    FROM workflows 
+    WHERE due_date < NOW() AND status NOT IN ('completed', 'cancelled')
+")->fetch();
+
+$workflow_analytics['overdue'] = [
+    'total' => $overdue_analytics['total_overdue'] ?? 0,
+    'avg_days' => round($overdue_analytics['avg_overdue_days'] ?? 0, 1),
+    'urgent_count' => $overdue_analytics['urgent_overdue'] ?? 0,
+    'high_count' => $overdue_analytics['high_overdue'] ?? 0
+];
+
+// Due Today and Due This Week Analytics
+$due_today = $pdo->query("
+    SELECT COUNT(*) FROM workflows 
+    WHERE DATE(due_date) = CURDATE() AND status NOT IN ('completed', 'cancelled')
+")->fetchColumn() ?: 0;
+
+$due_this_week = $pdo->query("
+    SELECT COUNT(*) FROM workflows 
+    WHERE YEARWEEK(due_date, 1) = YEARWEEK(CURDATE(), 1) 
+    AND due_date >= CURDATE() 
+    AND status NOT IN ('completed', 'cancelled')
+")->fetchColumn() ?: 0;
+
+$workflow_analytics['due_summary'] = [
+    'today' => $due_today,
+    'this_week' => $due_this_week
+];
+
+// Daily Workflow Completion Trends (last 7 days)
+$workflow_completion_data = [];
+$workflow_completion_labels = [];
+for ($i = 6; $i >= 0; $i--) {
+    $date = date('Y-m-d', strtotime("-$i days"));
+    $workflow_completion_labels[] = date('M j', strtotime($date));
+    
+    $completions = $pdo->prepare("
+        SELECT COUNT(*) FROM workflows 
+        WHERE DATE(completion_date) = ? AND status = 'completed'
+    ");
+    $completions->execute([$date]);
+    $workflow_completion_data[] = $completions->fetchColumn() ?: 0;
+}
+
+// Category Performance Analytics
+$category_performance = $pdo->query("
+    SELECT 
+        COALESCE(category, 'Uncategorized') as category,
+        COUNT(*) as total,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
+        AVG(CASE WHEN status = 'completed' AND actual_hours IS NOT NULL 
+            THEN actual_hours END) as avg_completion_time
+    FROM workflows 
+    GROUP BY category
+    ORDER BY total DESC
+    LIMIT 10
+")->fetchAll();
+
+$workflow_analytics['category_performance'] = $category_performance;
+
+// User Performance Analytics
+$user_performance = $pdo->query("
+    SELECT 
+        u.username,
+        COUNT(w.id) as assigned_tasks,
+        COUNT(CASE WHEN w.status = 'completed' THEN 1 END) as completed_tasks,
+        AVG(CASE WHEN w.status = 'completed' AND w.actual_hours IS NOT NULL 
+            THEN w.actual_hours END) as avg_completion_time
+    FROM users u
+    LEFT JOIN workflows w ON u.id = w.assigned_to
+    WHERE u.status = 'approved'
+    GROUP BY u.id, u.username
+    HAVING assigned_tasks > 0
+    ORDER BY completed_tasks DESC
+    LIMIT 10
+")->fetchAll();
+
+$workflow_analytics['user_performance'] = $user_performance;
+
 // Get user activity data (last 7 days)
 $user_activity_data = [];
 $user_activity_labels = [];
@@ -153,6 +276,7 @@ for ($i = 0; $i < 7; $i++) {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="assets/css/modern.css">
+    <?php loadThemeSystem(); ?>
     <style>
         .analytics-dashboard .chart-container {
             position: relative;
@@ -233,10 +357,28 @@ for ($i = 0; $i < 7; $i++) {
         }
         /* Compress grid spacing */
         .grid {
+            display: grid;
             gap: 1rem !important;
         }
+        
+        .grid-cols-4 {
+            grid-template-columns: repeat(4, 1fr) !important;
+        }
+        
+        .grid-cols-3 {
+            grid-template-columns: repeat(3, 1fr) !important;
+        }
+        
+        .grid-cols-2 {
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+        
         .grid.mb-5 {
             margin-bottom: 1.5rem !important;
+        }
+        
+        .grid.mb-4 {
+            margin-bottom: 1rem !important;
         }
         /* Compact page header */
         .page-header {
@@ -255,6 +397,102 @@ for ($i = 0; $i < 7; $i++) {
         .modern-container.analytics-dashboard {
             padding-top: 0.5rem !important;
         }
+        
+        /* Compact KPI Cards */
+        .metric-card.compact-kpi {
+            padding: 0.75rem 0.5rem;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border: 1px solid transparent;
+            transition: all 0.3s ease;
+            color: white;
+            text-align: center;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 100px;
+        }
+        
+        .metric-card.compact-kpi .metric-value {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 0.2rem;
+        }
+        
+        .metric-card.compact-kpi .metric-label {
+            font-size: 0.75rem;
+            opacity: 0.9;
+            line-height: 1.1;
+            margin-bottom: 0.15rem;
+        }
+        
+        .metric-card.compact-kpi .metric-change {
+            font-size: 0.65rem;
+            opacity: 0.8;
+        }
+        
+        /* Theme-aware KPI styles */
+        .success-theme {
+            background: linear-gradient(135deg, var(--success-color), #16a34a);
+        }
+        
+        .danger-theme {
+            background: linear-gradient(135deg, var(--danger-color), #dc2626);
+        }
+        
+        .warning-theme {
+            background: linear-gradient(135deg, var(--warning-color), #d97706);
+        }
+        
+        .info-theme {
+            background: linear-gradient(135deg, var(--info-color), #2563eb);
+        }
+        
+        .primary-theme {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+        }
+        
+        .secondary-theme {
+            background: linear-gradient(135deg, var(--secondary-color), var(--secondary-dark));
+        }
+        
+        /* Dark mode adjustments */
+        [data-theme="dark"] .metric-card.compact-kpi {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            border-color: var(--border-color);
+        }
+        
+        [data-theme="dark"] .success-theme {
+            background: linear-gradient(135deg, #059669, #047857);
+        }
+        
+        [data-theme="dark"] .danger-theme {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+        }
+        
+        [data-theme="dark"] .warning-theme {
+            background: linear-gradient(135deg, #d97706, #b45309);
+        }
+        
+        [data-theme="dark"] .info-theme {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        }
+        
+        /* Hover effects for clickable KPIs */
+        .metric-card.compact-kpi.clickable-metric:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .metric-change.warning {
+            color: #fbbf24;
+        }
+        
+        .metric-change.neutral {
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
         /* Mobile responsiveness for compressed layout */
         @media (max-width: 768px) {
             .analytics-card {
@@ -283,12 +521,71 @@ for ($i = 0; $i < 7; $i++) {
             .grid.grid-cols-4 {
                 grid-template-columns: repeat(2, 1fr) !important;
             }
+            .grid.grid-cols-6 {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
             .grid.grid-cols-3 {
                 grid-template-columns: repeat(1, 1fr) !important;
             }
             .grid.grid-cols-2 {
                 grid-template-columns: repeat(1, 1fr) !important;
             }
+        }
+        
+        @media (max-width: 768px) {
+            .grid.grid-cols-6 {
+                grid-template-columns: repeat(3, 1fr) !important;
+            }
+        }
+        
+        @media (max-width: 992px) {
+            .grid.grid-cols-6 {
+                grid-template-columns: repeat(3, 1fr) !important;
+            }
+        }
+        
+        /* Workflow Analytics Styles */
+        .analytics-section {
+            border-top: 2px solid var(--border-color);
+            padding-top: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .performance-table {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .performance-table table {
+            margin-bottom: 0;
+            font-size: 0.875rem;
+        }
+        
+        .performance-table th {
+            background-color: #f8f9fa;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            font-size: 0.8rem;
+            padding: 0.5rem;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        .performance-table td {
+            font-size: 0.85rem;
+            padding: 0.5rem;
+        }
+        
+        .metric-card .metric-change.positive {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .metric-card .metric-change.negative {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .badge {
+            font-size: 0.75rem;
         }
     </style>
 </head>
@@ -320,6 +617,7 @@ for ($i = 0; $i < 7; $i++) {
         <div class="modern-container">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
+                    <h1 class="page-title">Analytics</h1>
                     <p class="page-subtitle">Monitor your business operations with comprehensive data insights</p>
                 </div>
                 <div>
@@ -336,33 +634,37 @@ for ($i = 0; $i < 7; $i++) {
 
     <!-- Main Content -->
     <div class="modern-container analytics-dashboard">
-        <!-- Enhanced KPI Metrics -->
-        <div class="grid grid-cols-4 mb-5">
-            <div class="metric-card">
-                <div class="metric-value">₦<?= number_format($total_revenue, 2) ?></div>
-                <div class="metric-label">Total Revenue</div>
-                <div class="metric-change <?= $revenue_change_class ?>"><?= $revenue_change_text ?></div>
+        <!-- Notification Widget -->
+        <?php 
+        require_once 'notification_widget.php';
+        $notification_widget = new NotificationWidget($pdo, $user_id, $_SESSION['role']);
+        echo $notification_widget->render();
+        ?>
+        
+        <!-- Analytics KPI Tabs -->
+        <div class="grid grid-cols-4 mb-4" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+            <div class="metric-card compact-kpi success-theme">
+                <div class="metric-value">₦<?= number_format($total_revenue/1000, 0) ?>K</div>
+                <div class="metric-label">Revenue</div>
+                <div class="metric-change <?= $revenue_change_class ?>"><?= $revenue_change >= 0 ? '+' : '' ?><?= number_format($revenue_change, 1) ?>%</div>
             </div>
-            <div class="metric-card clickable-metric" onclick="window.location.href='inventory.php'" style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
-                <div class="metric-value"><?= $inventory_alerts ?></div>
-                <div class="metric-label">Active Inventory Items</div>
-                <div class="metric-change positive">↗ +3.2% from last week</div>
-                <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.5rem;">
-                    <i class="bi bi-cursor-fill"></i> Click to view inventory
-                </div>
+            <div class="metric-card compact-kpi clickable-metric danger-theme" onclick="window.location.href='workflows.php'" style="cursor: pointer;">
+                <div class="metric-value"><?= $workflow_analytics['overdue']['total'] ?></div>
+                <div class="metric-label">Total Overdue</div>
+                <div class="metric-change negative"><?= $workflow_analytics['overdue']['avg_days'] ?> avg days</div>
             </div>
-            <div class="metric-card">
+            <div class="metric-card compact-kpi info-theme">
                 <div class="metric-value"><?= $new_leads ?></div>
                 <div class="metric-label">New Leads</div>
-                <div class="metric-change negative">↘ -5.1% from last month</div>
+                <div class="metric-change <?= $new_leads > 10 ? 'positive' : 'neutral' ?>">This month</div>
             </div>
-            <div class="metric-card">
-                <div class="metric-value">94.2%</div>
-                <div class="metric-label">System Efficiency</div>
-                <div class="metric-change positive">↗ +2.8% from last quarter</div>
+            <div class="metric-card compact-kpi clickable-metric secondary-theme" onclick="window.location.href='inventory.php'" style="cursor: pointer;">
+                <div class="metric-value"><?= $inventory_alerts ?></div>
+                <div class="metric-label">Inventory</div>
+                <div class="metric-change positive">Active items</div>
             </div>
         </div>
-
+        
         <!-- Charts Grid -->
         <div class="grid grid-cols-2 mb-5">
             <!-- Revenue Trend Chart -->
@@ -475,6 +777,130 @@ for ($i = 0; $i < 7; $i++) {
                 </div>
                 <div class="chart-container">
                     <canvas id="predictiveChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workflow Analytics Section -->
+            <div class="grid grid-cols-3 mb-4">
+                <!-- Workflow Completion Trends -->
+                <div class="analytics-card">
+                    <div class="analytics-header">
+                        <div>
+                            <h3 class="chart-title">Daily Completion Trends</h3>
+                            <p class="chart-subtitle">Tasks completed per day (last 7 days)</p>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="workflowCompletionChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Priority Distribution -->
+                <div class="analytics-card">
+                    <div class="analytics-header">
+                        <div>
+                            <h3 class="chart-title">Priority Distribution</h3>
+                            <p class="chart-subtitle">Task breakdown by priority level</p>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="priorityDistributionChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Workflow Status -->
+                <div class="analytics-card">
+                    <div class="analytics-header">
+                        <div>
+                            <h3 class="chart-title">Workflow Status</h3>
+                            <p class="chart-subtitle">Current task status distribution</p>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="workflowStatusChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Category and User Performance -->
+            <div class="grid grid-cols-2 mb-4">
+                <!-- Category Performance -->
+                <div class="analytics-card">
+                    <div class="analytics-header">
+                        <div>
+                            <h3 class="chart-title">Category Performance</h3>
+                            <p class="chart-subtitle">Task completion by category</p>
+                        </div>
+                    </div>
+                    <div class="performance-table">
+                        <table class="table table-striped table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th>Total</th>
+                                    <th>Completed</th>
+                                    <th>Rate</th>
+                                    <th>Avg Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($workflow_analytics['category_performance'] as $category): ?>
+                                    <?php $completion_rate = $category['total'] > 0 ? round(($category['completed'] / $category['total']) * 100, 1) : 0; ?>
+                                    <tr>
+                                        <td><strong><?= htmlspecialchars($category['category']) ?></strong></td>
+                                        <td><?= $category['total'] ?></td>
+                                        <td><?= $category['completed'] ?></td>
+                                        <td>
+                                            <span class="badge bg-<?= $completion_rate >= 80 ? 'success' : ($completion_rate >= 60 ? 'warning' : 'danger') ?>">
+                                                <?= $completion_rate ?>%
+                                            </span>
+                                        </td>
+                                        <td><?= $category['avg_completion_time'] ? round($category['avg_completion_time'], 1) . 'h' : '-' ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- User Performance -->
+                <div class="analytics-card">
+                    <div class="analytics-header">
+                        <div>
+                            <h3 class="chart-title">User Performance</h3>
+                            <p class="chart-subtitle">Top performing team members</p>
+                        </div>
+                    </div>
+                    <div class="performance-table">
+                        <table class="table table-striped table-sm">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Assigned</th>
+                                    <th>Completed</th>
+                                    <th>Rate</th>
+                                    <th>Avg Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($workflow_analytics['user_performance'] as $user): ?>
+                                    <?php $completion_rate = $user['assigned_tasks'] > 0 ? round(($user['completed_tasks'] / $user['assigned_tasks']) * 100, 1) : 0; ?>
+                                    <tr>
+                                        <td><strong><?= htmlspecialchars($user['username']) ?></strong></td>
+                                        <td><?= $user['assigned_tasks'] ?></td>
+                                        <td><?= $user['completed_tasks'] ?></td>
+                                        <td>
+                                            <span class="badge bg-<?= $completion_rate >= 80 ? 'success' : ($completion_rate >= 60 ? 'warning' : 'danger') ?>">
+                                                <?= $completion_rate ?>%
+                                            </span>
+                                        </td>
+                                        <td><?= $user['avg_completion_time'] ? round($user['avg_completion_time'], 1) . 'h' : '-' ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -891,6 +1317,137 @@ for ($i = 0; $i < 7; $i++) {
                     console.log('✅ Predictive chart loaded with real data:', predictiveChart);
                 } catch (error) {
                     console.error('❌ Predictive chart error:', error);
+                }
+            }
+            
+            // Initialize workflow charts
+            initializeWorkflowCharts();
+        }
+        
+        function initializeWorkflowCharts() {
+            console.log('📊 Initializing workflow charts...');
+            
+            // Workflow Completion Trends Chart
+            const workflowCompletionCtx = document.getElementById('workflowCompletionChart');
+            if (workflowCompletionCtx) {
+                try {
+                    new Chart(workflowCompletionCtx, {
+                        type: 'line',
+                        data: {
+                            labels: <?= json_encode($workflow_completion_labels) ?>,
+                            datasets: [{
+                                label: 'Completed Tasks',
+                                data: <?= json_encode($workflow_completion_data) ?>,
+                                borderColor: '#28a745',
+                                backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                                borderWidth: 2,
+                                fill: true,
+                                tension: 0.4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: { stepSize: 1 }
+                                }
+                            }
+                        }
+                    });
+                    console.log('✅ Workflow completion chart created');
+                } catch (error) {
+                    console.error('❌ Workflow completion chart error:', error);
+                }
+            }
+            
+            // Priority Distribution Chart
+            const priorityCtx = document.getElementById('priorityDistributionChart');
+            if (priorityCtx) {
+                try {
+                    const priorityData = <?= json_encode($workflow_analytics['priority_distribution']) ?>;
+                    const colors = {
+                        'urgent': '#dc3545',
+                        'high': '#fd7e14', 
+                        'medium': '#ffc107',
+                        'low': '#28a745',
+                        'unassigned': '#6c757d'
+                    };
+                    
+                    new Chart(priorityCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: Object.keys(priorityData).map(p => p.charAt(0).toUpperCase() + p.slice(1)),
+                            datasets: [{
+                                data: Object.values(priorityData),
+                                backgroundColor: Object.keys(priorityData).map(p => colors[p] || '#6c757d'),
+                                borderWidth: 2,
+                                borderColor: '#ffffff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: { fontSize: 12 }
+                                }
+                            }
+                        }
+                    });
+                    console.log('✅ Priority distribution chart created');
+                } catch (error) {
+                    console.error('❌ Priority distribution chart error:', error);
+                }
+            }
+            
+            // Workflow Status Chart
+            const statusCtx = document.getElementById('workflowStatusChart');
+            if (statusCtx) {
+                try {
+                    const statusData = <?= json_encode($workflow_data) ?>;
+                    const statusColors = {
+                        'pending': '#ffc107',
+                        'approved': '#28a745',
+                        'rejected': '#dc3545',
+                        'completed': '#17a2b8',
+                        'cancelled': '#6c757d'
+                    };
+                    
+                    new Chart(statusCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: Object.keys(statusData).map(s => s.charAt(0).toUpperCase() + s.slice(1)),
+                            datasets: [{
+                                label: 'Tasks',
+                                data: Object.values(statusData),
+                                backgroundColor: Object.keys(statusData).map(s => statusColors[s] || '#6c757d'),
+                                borderWidth: 1,
+                                borderRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: { stepSize: 1 }
+                                }
+                            }
+                        }
+                    });
+                    console.log('✅ Workflow status chart created');
+                } catch (error) {
+                    console.error('❌ Workflow status chart error:', error);
                 }
             }
         }

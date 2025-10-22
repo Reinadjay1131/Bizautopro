@@ -220,6 +220,12 @@ function createWorkflow($user) {
     global $pdo;
     $endpoint = 'workflows';
     
+    // Authorization check - Only admin can create workflows
+    if ($user['role'] !== 'admin') {
+        logApiRequest($endpoint, 'POST', $user['id'], 'unauthorized');
+        errorResponse('Access denied. Only administrators can create workflows.', 403);
+    }
+    
     $data = getJsonInput();
     validateRequired($data, ['title', 'description']);
     
@@ -313,6 +319,15 @@ function updateWorkflow($workflow_id, $user) {
         if (!$allowed) {
             errorResponse('Insufficient permissions for this status change', 403);
         }
+    }
+    
+    // Check assignment/cancellation permissions (admin only)
+    if (isset($data['assigned_to']) && $user['role'] !== 'admin') {
+        errorResponse('Access denied. Only administrators can assign or reassign workflows.', 403);
+    }
+    
+    if (isset($data['status']) && $data['status'] === 'cancelled' && $user['role'] !== 'admin') {
+        errorResponse('Access denied. Only administrators can cancel workflows.', 403);
     }
     
     try {
