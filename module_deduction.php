@@ -114,6 +114,92 @@ error_log("Module Deduction - User: " . $_SESSION['username'] . " (" . $_SESSION
         .barcode-container { position: relative; margin-bottom: 1rem; }
         #barcode-result { font-size: 0.9rem; color: #666; }
         .totals-row { font-weight: bold; background-color: #f8f9fa; }
+        
+        /* Responsive Print Button Styles */
+        .responsive-print-btn {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .responsive-print-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .responsive-print-btn:active {
+            transform: translateY(0);
+        }
+        
+        /* Touch device optimizations */
+        @media (pointer: coarse) {
+            .responsive-print-btn {
+                min-height: 44px;
+                padding: 12px 16px;
+                font-size: 16px;
+            }
+            
+            .responsive-print-btn i {
+                font-size: 18px;
+            }
+        }
+        
+        /* Mobile specific styles */
+        @media (max-width: 576px) {
+            .responsive-print-btn {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            
+            .print-btn-text {
+                font-size: 14px;
+            }
+            
+            .d-flex.justify-content-between {
+                flex-direction: column;
+            }
+            
+            .d-flex.justify-content-between > div {
+                width: 100%;
+            }
+            
+            .btn-danger {
+                width: 100%;
+            }
+        }
+        
+        /* Tablet specific styles */
+        @media (min-width: 577px) and (max-width: 991px) {
+            .responsive-print-btn {
+                padding: 10px 20px;
+                font-size: 15px;
+            }
+        }
+        
+        /* Desktop hover effects */
+        @media (hover: hover) and (pointer: fine) {
+            .responsive-print-btn::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+                transition: left 0.5s;
+            }
+            
+            .responsive-print-btn:hover::before {
+                left: 100%;
+            }
+        }
+        
+        /* High DPI/Retina display optimizations */
+        @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+            .responsive-print-btn i {
+                font-weight: 500;
+            }
+        }
     </style>
 </head>
 <body>
@@ -296,8 +382,8 @@ error_log("Module Deduction - User: " . $_SESSION['username'] . " (" . $_SESSION
                     <input type="hidden" name="items" id="itemsData">
                     <div class="d-flex justify-content-between mt-3">
                         <div>
-                            <button type="button" class="btn btn-outline-primary" id="printReceiptBtn" onclick="manualPrintReceipt()">
-                                <i class="bi bi-printer"></i> Print Receipt
+                            <button type="button" class="btn btn-outline-primary responsive-print-btn" id="printReceiptBtn" onclick="manualPrintReceipt()">
+                                <i class="bi bi-printer"></i> <span class="print-btn-text">Print Receipt</span>
                             </button>
                         </div>
                         <button type="submit" class="btn btn-danger">
@@ -512,7 +598,7 @@ error_log("Module Deduction - User: " . $_SESSION['username'] . " (" . $_SESSION
             }
         }
         
-        // Print Receipt Function 
+        // Enhanced Print Receipt Function with device responsiveness
         function manualPrintReceipt() {
             console.log('🖨️ Print receipt function called');
             
@@ -527,9 +613,13 @@ error_log("Module Deduction - User: " . $_SESSION['username'] . " (" . $_SESSION
                 
                 console.log('📄 Preparing receipt for:', activeTab, 'with', items.length, 'items');
                 
+                // Detect device type for optimal window sizing
+                var deviceInfo = detectDeviceType();
+                var windowFeatures = getOptimalWindowFeatures(deviceInfo);
+                
                 var receiptContent = generateReceiptHTML(activeTab, items);
                 
-                var printWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+                var printWindow = window.open('', '_blank', windowFeatures);
                 
                 if (!printWindow) {
                     alert('❌ Print window blocked! Please allow popups for this site and try again.');
@@ -540,15 +630,300 @@ error_log("Module Deduction - User: " . $_SESSION['username'] . " (" . $_SESSION
                 printWindow.document.close();
                 printWindow.focus();
                 
-                console.log('✅ Receipt window opened successfully');
+                // Auto-adjust window size after content loads (for desktop)
+                if (deviceInfo.type === 'desktop') {
+                    setTimeout(function() {
+                        try {
+                            printWindow.resizeTo(Math.min(900, screen.width * 0.8), Math.min(700, screen.height * 0.8));
+                            printWindow.moveTo(
+                                (screen.width - printWindow.outerWidth) / 2,
+                                (screen.height - printWindow.outerHeight) / 2
+                            );
+                        } catch (e) {
+                            console.log('Window resize not available');
+                        }
+                    }, 100);
+                }
+                
+                console.log('✅ Receipt window opened successfully for', deviceInfo.type, 'device');
                 
             } catch (error) {
                 console.error('💥 Print error:', error);
                 alert('❌ Print failed: ' + error.message);
             }
         }
+
+        // Get optimal window features based on device type
+        function getOptimalWindowFeatures(deviceInfo) {
+            if (deviceInfo.isMobile || deviceInfo.isPhone) {
+                // Mobile devices - use full screen or large modal
+                return 'width=' + Math.min(400, screen.width) + ',height=' + Math.min(600, screen.height) + 
+                       ',scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no,status=no';
+            } else if (deviceInfo.isTablet) {
+                // Tablet devices - medium sized window
+                return 'width=' + Math.min(600, screen.width * 0.9) + ',height=' + Math.min(800, screen.height * 0.9) + 
+                       ',scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no,status=no';
+            } else {
+                // Desktop - original size with centering
+                return 'width=800,height=600,scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no,status=no';
+            }
+        }
         
-        // Generate receipt HTML
+        // Device detection utility
+        function detectDeviceType() {
+            var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+            var screenWidth = window.screen.width;
+            var isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            
+            // Mobile devices
+            if (/android/i.test(userAgent) || (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream)) {
+                return {
+                    type: 'mobile',
+                    isMobile: true,
+                    isTablet: /iPad/.test(userAgent) || (screenWidth >= 768 && screenWidth <= 1024),
+                    isPhone: screenWidth < 768,
+                    hasTouch: isTouchDevice,
+                    orientation: screenWidth > window.screen.height ? 'landscape' : 'portrait'
+                };
+            }
+            
+            // Tablet devices
+            if (isTouchDevice && screenWidth >= 768 && screenWidth <= 1024) {
+                return {
+                    type: 'tablet',
+                    isMobile: false,
+                    isTablet: true,
+                    isPhone: false,
+                    hasTouch: true,
+                    orientation: screenWidth > window.screen.height ? 'landscape' : 'portrait'
+                };
+            }
+            
+            // Desktop/Laptop
+            return {
+                type: 'desktop',
+                isMobile: false,
+                isTablet: false,
+                isPhone: false,
+                hasTouch: isTouchDevice,
+                orientation: 'landscape'
+            };
+        }
+
+        // Generate responsive CSS based on device type
+        function generateResponsiveCSS(deviceInfo) {
+            var baseCSS = `
+                body { 
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                    line-height: 1.4; 
+                    color: #333;
+                }
+                .receipt-header { 
+                    text-align: center; 
+                    border-bottom: 2px solid #000; 
+                    padding-bottom: 15px; 
+                    margin-bottom: 20px; 
+                }
+                .receipt-table { 
+                    width: 100%; 
+                    border-collapse: collapse; 
+                    margin: 15px 0; 
+                }
+                .receipt-table th, .receipt-table td { 
+                    border: 1px solid #ddd; 
+                    text-align: left; 
+                    vertical-align: middle;
+                }
+                .receipt-table th { 
+                    background-color: #f8f9fa; 
+                    font-weight: bold; 
+                }
+                .receipt-footer { 
+                    margin-top: 25px; 
+                    border-top: 1px solid #000; 
+                    padding-top: 15px; 
+                    text-align: center;
+                }
+                .totals-row { 
+                    font-weight: bold; 
+                    background-color: #e9ecef; 
+                }
+                .no-print { 
+                    text-align: center; 
+                    margin-top: 20px; 
+                }
+                .btn { 
+                    margin: 5px; 
+                    border: none; 
+                    border-radius: 5px; 
+                    cursor: pointer; 
+                    transition: all 0.3s ease;
+                }
+                .btn-primary { 
+                    background-color: #0d6efd; 
+                    color: white; 
+                }
+                .btn-secondary { 
+                    background-color: #6c757d; 
+                    color: white; 
+                }
+                .btn:hover { 
+                    opacity: 0.9; 
+                    transform: translateY(-1px); 
+                }
+            `;
+
+            var deviceSpecificCSS = '';
+
+            if (deviceInfo.isMobile || deviceInfo.isPhone) {
+                // Mobile phone specific styling
+                deviceSpecificCSS = `
+                    body { 
+                        padding: 10px; 
+                        font-size: 12px; 
+                    }
+                    .receipt-header h2 { 
+                        font-size: 18px; 
+                        margin: 10px 0; 
+                    }
+                    .receipt-header h4 { 
+                        font-size: 14px; 
+                        margin: 8px 0; 
+                    }
+                    .receipt-header p { 
+                        font-size: 11px; 
+                        margin: 3px 0; 
+                    }
+                    .receipt-table th, .receipt-table td { 
+                        padding: 6px 4px; 
+                        font-size: 11px; 
+                    }
+                    .receipt-table th:first-child { 
+                        width: 25px; 
+                    }
+                    .receipt-table th:nth-child(3) { 
+                        width: 45px; 
+                    }
+                    .receipt-table th:nth-child(4), 
+                    .receipt-table th:nth-child(5) { 
+                        width: 60px; 
+                    }
+                    .btn { 
+                        padding: 12px 20px; 
+                        font-size: 14px; 
+                        min-height: 44px; 
+                        width: 45%; 
+                        display: inline-block; 
+                    }
+                    .receipt-footer { 
+                        font-size: 10px; 
+                    }
+                `;
+            } else if (deviceInfo.isTablet) {
+                // Tablet specific styling
+                deviceSpecificCSS = `
+                    body { 
+                        padding: 15px; 
+                        font-size: 14px; 
+                    }
+                    .receipt-header h2 { 
+                        font-size: 22px; 
+                        margin: 12px 0; 
+                    }
+                    .receipt-header h4 { 
+                        font-size: 16px; 
+                        margin: 10px 0; 
+                    }
+                    .receipt-table th, .receipt-table td { 
+                        padding: 10px 8px; 
+                    }
+                    .receipt-table th:first-child { 
+                        width: 35px; 
+                    }
+                    .receipt-table th:nth-child(3) { 
+                        width: 70px; 
+                    }
+                    .receipt-table th:nth-child(4), 
+                    .receipt-table th:nth-child(5) { 
+                        width: 90px; 
+                    }
+                    .btn { 
+                        padding: 12px 24px; 
+                        font-size: 16px; 
+                        min-width: 120px; 
+                    }
+                `;
+            } else {
+                // Desktop/Laptop styling (original)
+                deviceSpecificCSS = `
+                    body { 
+                        padding: 20px; 
+                        font-size: 14px; 
+                    }
+                    .receipt-header h2 { 
+                        font-size: 24px; 
+                        margin: 15px 0; 
+                    }
+                    .receipt-header h4 { 
+                        font-size: 18px; 
+                        margin: 12px 0; 
+                    }
+                    .receipt-table th, .receipt-table td { 
+                        padding: 8px; 
+                    }
+                    .receipt-table th:first-child { 
+                        width: 40px; 
+                    }
+                    .receipt-table th:nth-child(3) { 
+                        width: 80px; 
+                    }
+                    .receipt-table th:nth-child(4), 
+                    .receipt-table th:nth-child(5) { 
+                        width: 100px; 
+                    }
+                    .btn { 
+                        padding: 10px 20px; 
+                        font-size: 14px; 
+                        min-width: 100px; 
+                    }
+                `;
+            }
+
+            // Print media query - optimized for all devices
+            var printCSS = `
+                @media print { 
+                    body { 
+                        padding: 5px !important; 
+                        font-size: 12px !important; 
+                        color: black !important; 
+                        background: white !important; 
+                    }
+                    .no-print { 
+                        display: none !important; 
+                    }
+                    .receipt-table th, .receipt-table td { 
+                        border: 1px solid #000 !important; 
+                        padding: 4px !important; 
+                    }
+                    .receipt-header { 
+                        border-bottom: 2px solid #000 !important; 
+                    }
+                    .receipt-footer { 
+                        border-top: 1px solid #000 !important; 
+                    }
+                    page-break-inside: avoid; 
+                }
+                
+                @page { 
+                    margin: 0.5cm; 
+                    size: auto; 
+                }
+            `;
+
+            return baseCSS + deviceSpecificCSS + printCSS;
+        }
+
+        // Generate receipt HTML with responsive design
         function generateReceiptHTML(type, items) {
             var now = new Date();
             var dateStr = now.toLocaleDateString('en-NG');
@@ -558,6 +933,10 @@ error_log("Module Deduction - User: " . $_SESSION['username'] . " (" . $_SESSION
             var totalPrice = 0;
             var itemsHTML = '';
             
+            // Detect device type for responsive styling
+            var deviceInfo = detectDeviceType();
+            
+            // Generate items HTML
             for (var i = 0; i < items.length; i++) {
                 var item = items[i];
                 totalQty += item.qty;
@@ -568,12 +947,79 @@ error_log("Module Deduction - User: " . $_SESSION['username'] . " (" . $_SESSION
                 var productName = item.name.split(' (SKU:')[0];
                 var itemTotal = type === 'sales' ? (item.price * item.qty) : 0;
                 
-                itemsHTML += '<tr><td>' + (i + 1) + '</td><td>' + productName + '</td><td style="text-align: right;">' + item.qty + '</td><td style="text-align: right;">' + (type === 'sales' ? '₦' + item.price.toFixed(2) : 'N/A') + '</td><td style="text-align: right;">' + (type === 'sales' ? '₦' + itemTotal.toFixed(2) : 'N/A') + '</td></tr>';
+                // Truncate product name on mobile devices
+                if (deviceInfo.isPhone && productName.length > 20) {
+                    productName = productName.substring(0, 20) + '...';
+                }
+                
+                itemsHTML += '<tr>' +
+                    '<td>' + (i + 1) + '</td>' +
+                    '<td>' + productName + '</td>' +
+                    '<td style="text-align: right;">' + item.qty + '</td>' +
+                    '<td style="text-align: right;">' + (type === 'sales' ? '₦' + item.price.toFixed(2) : 'N/A') + '</td>' +
+                    '<td style="text-align: right;">' + (type === 'sales' ? '₦' + itemTotal.toFixed(2) : 'N/A') + '</td>' +
+                    '</tr>';
             }
             
             var typeDisplay = type.charAt(0).toUpperCase() + type.slice(1);
+            var deviceTypeClass = 'device-' + deviceInfo.type;
             
-            return '<!DOCTYPE html><html><head><title>Inventory Deduction Receipt - ' + typeDisplay + '</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"><style>body { padding: 20px; font-family: Arial, sans-serif; font-size: 14px; } .receipt-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; } .receipt-table { width: 100%; border-collapse: collapse; margin: 10px 0; } .receipt-table th, .receipt-table td { border: 1px solid #ddd; padding: 8px; text-align: left; } .receipt-table th { background-color: #f8f9fa; font-weight: bold; } .receipt-footer { margin-top: 20px; border-top: 1px solid #000; padding-top: 10px; } .totals-row { font-weight: bold; background-color: #f0f0f0; } @media print { body { padding: 0; } .no-print { display: none; } }</style></head><body><div class="receipt-header"><h2>BizAutoPro</h2><h4>Inventory Deduction Receipt</h4><p><strong>Date:</strong> ' + dateStr + ' <strong>Time:</strong> ' + timeStr + '</p><p><strong>Type:</strong> ' + typeDisplay + '</p><p><strong>Processed by:</strong> <?= $_SESSION["username"] ?? "System" ?></p></div><table class="receipt-table"><thead><tr><th style="width: 40px;">#</th><th>Product</th><th style="text-align: right; width: 80px;">Qty</th><th style="text-align: right; width: 100px;">Price</th><th style="text-align: right; width: 100px;">Total</th></tr></thead><tbody>' + itemsHTML + '</tbody><tfoot><tr class="totals-row"><th colspan="2">GRAND TOTAL</th><th style="text-align: right;">' + totalQty + '</th><th style="text-align: right;">' + (type === 'sales' ? '₦' + totalPrice.toFixed(2) : 'N/A') + '</th><th style="text-align: right;">' + (type === 'sales' ? '₦' + totalPrice.toFixed(2) : 'N/A') + '</th></tr></tfoot></table><div class="receipt-footer"><p><strong>Thank you for using BizAutoPro!</strong></p><p><small>Generated on ' + dateStr + ' at ' + timeStr + '</small></p></div><div class="no-print" style="text-align: center; margin-top: 20px;"><button onclick="window.print()" class="btn btn-primary">Print Receipt</button><button onclick="window.close()" class="btn btn-secondary">Close</button></div></body></html>';
+            // Enhanced receipt HTML with responsive design
+            return '<!DOCTYPE html>' +
+                '<html lang="en">' +
+                '<head>' +
+                    '<meta charset="UTF-8">' +
+                    '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+                    '<title>Inventory Deduction Receipt - ' + typeDisplay + '</title>' +
+                    '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">' +
+                    '<style>' + generateResponsiveCSS(deviceInfo) + '</style>' +
+                '</head>' +
+                '<body class="' + deviceTypeClass + '">' +
+                    '<div class="receipt-container">' +
+                        '<div class="receipt-header">' +
+                            '<h2>BizAutoPro</h2>' +
+                            '<h4>Inventory Deduction Receipt</h4>' +
+                            '<p><strong>Date:</strong> ' + dateStr + ' <strong>Time:</strong> ' + timeStr + '</p>' +
+                            '<p><strong>Type:</strong> ' + typeDisplay + '</p>' +
+                            '<p><strong>Processed by:</strong> <?= $_SESSION["username"] ?? "System" ?></p>' +
+                            '<p><small>Device: ' + deviceInfo.type.charAt(0).toUpperCase() + deviceInfo.type.slice(1) + 
+                            (deviceInfo.hasTouch ? ' (Touch)' : '') + '</small></p>' +
+                        '</div>' +
+                        '<table class="receipt-table">' +
+                            '<thead>' +
+                                '<tr>' +
+                                    '<th>#</th>' +
+                                    '<th>Product</th>' +
+                                    '<th style="text-align: right;">Qty</th>' +
+                                    '<th style="text-align: right;">Price</th>' +
+                                    '<th style="text-align: right;">Total</th>' +
+                                '</tr>' +
+                            '</thead>' +
+                            '<tbody>' + itemsHTML + '</tbody>' +
+                            '<tfoot>' +
+                                '<tr class="totals-row">' +
+                                    '<th colspan="2">GRAND TOTAL</th>' +
+                                    '<th style="text-align: right;">' + totalQty + '</th>' +
+                                    '<th style="text-align: right;">' + (type === 'sales' ? '₦' + totalPrice.toFixed(2) : 'N/A') + '</th>' +
+                                    '<th style="text-align: right;">' + (type === 'sales' ? '₦' + totalPrice.toFixed(2) : 'N/A') + '</th>' +
+                                '</tr>' +
+                            '</tfoot>' +
+                        '</table>' +
+                        '<div class="receipt-footer">' +
+                            '<p><strong>Thank you for using BizAutoPro!</strong></p>' +
+                            '<p><small>Generated on ' + dateStr + ' at ' + timeStr + '</small></p>' +
+                        '</div>' +
+                        '<div class="no-print">' +
+                            '<button onclick="window.print()" class="btn btn-primary">' +
+                                (deviceInfo.hasTouch ? '🖨️ ' : '') + 'Print Receipt' +
+                            '</button>' +
+                            '<button onclick="window.close()" class="btn btn-secondary">' +
+                                (deviceInfo.hasTouch ? '✖️ ' : '') + 'Close' +
+                            '</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</body>' +
+                '</html>';
         }
         
         // Initialize when page loads
@@ -654,7 +1100,74 @@ error_log("Module Deduction - User: " . $_SESSION['username'] . " (" . $_SESSION
                 });
             }
             
-            console.log('✅ Page initialization complete!');
+            // Enhanced device-specific initialization
+            var currentDevice = detectDeviceType();
+            console.log('🎯 Device detected:', currentDevice.type, '- Touch:', currentDevice.hasTouch);
+            
+            // Add device-specific class to body for CSS targeting
+            document.body.classList.add('device-' + currentDevice.type);
+            if (currentDevice.hasTouch) {
+                document.body.classList.add('touch-device');
+            }
+            
+            // Enhance print button for touch devices
+            var printBtn = document.getElementById('printReceiptBtn');
+            if (printBtn && currentDevice.hasTouch) {
+                // Add haptic feedback for supported devices
+                printBtn.addEventListener('touchstart', function() {
+                    if (navigator.vibrate) {
+                        navigator.vibrate(50); // Brief vibration feedback
+                    }
+                });
+                
+                // Improve touch target size
+                printBtn.style.minHeight = '44px';
+                printBtn.style.padding = '12px 16px';
+                
+                // Add visual feedback
+                printBtn.addEventListener('touchstart', function() {
+                    this.style.transform = 'scale(0.95)';
+                });
+                
+                printBtn.addEventListener('touchend', function() {
+                    this.style.transform = 'scale(1)';
+                });
+            }
+            
+            // Mobile-specific optimizations
+            if (currentDevice.isMobile) {
+                // Prevent zoom on input focus for mobile Safari
+                var inputs = document.querySelectorAll('input, select');
+                for (var i = 0; i < inputs.length; i++) {
+                    inputs[i].addEventListener('focus', function() {
+                        this.style.fontSize = '16px'; // Prevent zoom
+                    });
+                }
+                
+                // Optimize barcode scanner for mobile
+                var barcodeInput = document.getElementById('barcode-input');
+                if (barcodeInput) {
+                    barcodeInput.setAttribute('inputmode', 'numeric');
+                    barcodeInput.setAttribute('pattern', '[0-9]*');
+                }
+            }
+            
+            console.log('✅ Page initialization complete with device optimizations!');
+        });
+        
+        // Add device info to console for debugging
+        window.addEventListener('load', function() {
+            var device = detectDeviceType();
+            console.log('🔍 Device Analysis:', {
+                type: device.type,
+                isMobile: device.isMobile,
+                isTablet: device.isTablet,
+                hasTouch: device.hasTouch,
+                orientation: device.orientation,
+                screenSize: window.screen.width + 'x' + window.screen.height,
+                viewport: window.innerWidth + 'x' + window.innerHeight,
+                userAgent: navigator.userAgent.substring(0, 50) + '...'
+            });
         });
         
         console.log('🎯 Script loaded successfully - Ready for use!');

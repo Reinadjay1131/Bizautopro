@@ -721,22 +721,6 @@ for ($i = 0; $i < 7; $i++) {
                     <canvas id="leadsChart"></canvas>
                 </div>
             </div>
-
-            <!-- Workflow Performance -->
-            <div class="analytics-card">
-                <div class="analytics-header">
-                    <div>
-                        <h3 class="chart-title">Workflow Performance</h3>
-                        <p class="chart-subtitle">Task completion and status distribution</p>
-                    </div>
-                    <button class="export-btn" onclick="window.analytics?.exportChartData('workflow')">
-                        <i class="bi bi-download"></i> Export
-                    </button>
-                </div>
-                <div class="chart-container">
-                    <canvas id="workflowChart"></canvas>
-                </div>
-            </div>
         </div>
 
         <!-- Third Row Charts -->
@@ -1195,35 +1179,6 @@ for ($i = 0; $i < 7; $i++) {
                     console.log('✅ Inventory chart loaded with real data:', inventoryChart);
                 } catch (error) {
                     console.error('❌ Inventory chart error:', error);
-                }
-            }
-
-            // Workflow Chart
-            const workflowCtx = document.getElementById('workflowChart');
-            if (workflowCtx) {
-                try {
-                    const workflowChart = new Chart(workflowCtx, {
-                        type: 'bar',
-                        data: realChartData.workflow,
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                title: {
-                                    display: true,
-                                    text: 'Workflow Status Distribution'
-                                }
-                            },
-                            scales: {
-                                y: {
-                                    beginAtZero: true
-                                }
-                            }
-                        }
-                    });
-                    console.log('✅ Workflow chart loaded with real data:', workflowChart);
-                } catch (error) {
-                    console.error('❌ Workflow chart error:', error);
                 }
             }
 
