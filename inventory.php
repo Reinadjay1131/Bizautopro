@@ -390,6 +390,10 @@ $low_stock = $pdo->query("SELECT * FROM inventory WHERE quantity < reorder_level
                         <i class="bi bi-plus-circle"></i>
                         Add New Item
                     </a>
+                        <a href="export_inventory.php" class="btn-modern btn-success" style="white-space:nowrap;">
+                            <i class="bi bi-file-earmark-spreadsheet"></i>
+                            Download CSV
+                        </a>
                 </div>
             </div>
         </div>
@@ -450,11 +454,17 @@ $low_stock = $pdo->query("SELECT * FROM inventory WHERE quantity < reorder_level
                                         <i class="bi bi-pencil"></i>
                                         Edit
                                     </a>
-                                    <button class="btn-modern btn-secondary btn-sm download-barcode"
-                                        data-sku="<?= htmlspecialchars($item['sku']) ?>">
-                                        <i class="bi bi-upc-scan"></i>
-                                        Barcode
-                                    </button>
+                                    <div class="barcode-download-group" style="display: flex; gap: 4px; align-items: center;">
+                                        <button class="btn-modern btn-secondary btn-sm download-barcode"
+                                            data-sku="<?= htmlspecialchars($item['sku']) ?>">
+                                            <i class="bi bi-upc-scan"></i>
+                                            Barcode
+                                        </button>
+                                        <select class="barcode-format-select btn-modern btn-light btn-sm" style="height:32px; padding:0 6px; font-size:0.9em;">
+                                            <option value="png">PNG</option>
+                                            <option value="svg">SVG</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -641,11 +651,17 @@ $low_stock = $pdo->query("SELECT * FROM inventory WHERE quantity < reorder_level
                                     <i class="bi bi-pencil"></i>
                                     Edit Item
                                 </a>
-                                <button class="btn-modern btn-secondary download-barcode"
-                                        data-sku="<?= htmlspecialchars($item['sku']) ?>">
-                                    <i class="bi bi-upc-scan"></i>
-                                    Generate Barcode
-                                </button>
+                                <div class="barcode-download-group" style="display: flex; gap: 4px; align-items: center;">
+                                    <button class="btn-modern btn-secondary download-barcode"
+                                            data-sku="<?= htmlspecialchars($item['sku']) ?>">
+                                        <i class="bi bi-upc-scan"></i>
+                                        Generate Barcode
+                                    </button>
+                                    <select class="barcode-format-select btn-modern btn-light btn-sm" style="height:32px; padding:0 6px; font-size:0.9em;">
+                                        <option value="png">PNG</option>
+                                        <option value="svg">SVG</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -726,35 +742,32 @@ $low_stock = $pdo->query("SELECT * FROM inventory WHERE quantity < reorder_level
             });
 
             // Handle barcode generation buttons
-            document.querySelectorAll('.download-barcode').forEach(button => {
+            document.querySelectorAll('.barcode-download-group').forEach(group => {
+                const button = group.querySelector('.download-barcode');
+                const select = group.querySelector('.barcode-format-select');
                 button.addEventListener('click', function(e) {
                     e.preventDefault();
-                    
                     const sku = this.getAttribute('data-sku');
                     if (!sku) {
                         alert('No SKU found for this item');
                         return;
                     }
-                    
+                    const format = select ? select.value : 'png';
                     const originalHtml = this.innerHTML;
-                    
                     // Show loading state
                     this.innerHTML = '<div class="spinner"></div> Generating...';
                     this.classList.add('btn-loading');
                     this.disabled = true;
-                    
                     // Create download link and trigger download
-                    const downloadUrl = `barcode_generator.php?sku=${encodeURIComponent(sku)}`;
-                    
+                    const downloadUrl = `barcode_generator.php?sku=${encodeURIComponent(sku)}&format=${encodeURIComponent(format)}`;
                     // Create invisible link to trigger download
                     const link = document.createElement('a');
                     link.href = downloadUrl;
-                    link.download = `barcode_${sku}.png`;
+                    link.download = `barcode_${sku}.${format}`;
                     link.style.display = 'none';
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
-                    
                     // Reset button state after short delay
                     setTimeout(() => {
                         this.innerHTML = originalHtml;

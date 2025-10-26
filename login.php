@@ -1,6 +1,8 @@
 <?php
+
 session_start();
 require 'config.php';
+require_once 'csrf.php';
 
 if (isset($_SESSION['user_id'])) {
     header("Location: " . ($_SESSION['role'] === 'admin' ? "dashboard.php" : "dashboard_me.php"));
@@ -8,13 +10,12 @@ if (isset($_SESSION['user_id'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_validate();
     $username = trim($_POST['username']);
     $password = $_POST['password'];
-    
     $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
     $stmt->execute([$username]);
     $user = $stmt->fetch();
-    
     if ($user && password_verify($password, $user['password'])) {
         // Check if user is approved
         if ($user['status'] !== 'approved') {
@@ -31,7 +32,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['username'] = $user['username'];
             $_SESSION['role'] = $user['role'];
             $_SESSION['last_login'] = date('Y-m-d H:i:s');
-            
             header("Location: " . ($user['role'] === 'admin' ? "dashboard.php" : "dashboard_me.php"));
             exit;
         }
@@ -167,6 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php endif; ?>
 
             <form method="post" id="loginForm">
+                <?php echo csrf_input(); ?>
                 <div class="form-group">
                     <label for="username" class="form-label">
                         <i class="bi bi-person"></i> Username

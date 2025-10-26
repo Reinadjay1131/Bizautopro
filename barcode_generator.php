@@ -10,24 +10,32 @@ if ($_SESSION['role'] !== 'admin' && $_SESSION['role'] !== 'inventory_manager') 
     exit;
 }
 
+
 if (isset($_GET['sku']) && !empty($_GET['sku'])) {
     $sku = trim($_GET['sku']);
-    
+    $format = isset($_GET['format']) && strtolower($_GET['format']) === 'svg' ? 'svg' : 'png';
     require 'vendor/autoload.php';
-    
     try {
-        $generator = new Picqer\Barcode\BarcodeGeneratorPNG();
-        $barcodeData = $generator->getBarcode($sku, $generator::TYPE_CODE_128, 2, 50);
-        
+        if ($format === 'svg') {
+            $generator = new Picqer\Barcode\BarcodeGeneratorSVG();
+            $barcodeData = $generator->getBarcode($sku, $generator::TYPE_CODE_128, 2, 50);
+            $contentType = 'image/svg+xml';
+            $ext = 'svg';
+        } else {
+            $generator = new Picqer\Barcode\BarcodeGeneratorPNG();
+            $barcodeData = $generator->getBarcode($sku, $generator::TYPE_CODE_128, 2, 50);
+            $contentType = 'image/png';
+            $ext = 'png';
+        }
         // Clear output buffers
         while (ob_get_level()) ob_end_clean();
-        
-        header('Content-Type: image/png');
-        header('Content-Disposition: attachment; filename="barcode_'.preg_replace('/[^a-zA-Z0-9-]/', '-', $sku).'.png"');
-        header('Content-Length: ' . strlen($barcodeData));
+        header('Content-Type: ' . $contentType);
+        header('Content-Disposition: attachment; filename="barcode_' . preg_replace('/[^a-zA-Z0-9-]/', '-', $sku) . '.' . $ext . '"');
+        if ($format !== 'svg') {
+            header('Content-Length: ' . strlen($barcodeData));
+        }
         echo $barcodeData;
         exit;
-        
     } catch (Exception $e) {
         error_log("Barcode Error: " . $e->getMessage());
         header("HTTP/1.1 500 Internal Server Error");
