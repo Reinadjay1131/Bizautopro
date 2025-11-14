@@ -39,7 +39,7 @@ try {
             break;
             
         case 'inventory':
-            echo json_encode(getInventoryAnalytics($pdo));
+            echo json_encode(getInventoryAnalytics($pdo, $date_range));
             break;
             
         case 'leads':
@@ -47,15 +47,15 @@ try {
             break;
             
         case 'workflows':
-            echo json_encode(getWorkflowAnalytics($pdo, $user_id, $user_role));
+            echo json_encode(getWorkflowAnalytics($pdo, $user_id, $user_role, $date_range));
             break;
             
         case 'user_activity':
-            echo json_encode(getUserActivityAnalytics($pdo));
+            echo json_encode(getUserActivityAnalytics($pdo, $date_range));
             break;
             
         case 'performance':
-            echo json_encode(getPerformanceMetrics($pdo, $user_id, $user_role));
+            echo json_encode(getPerformanceMetrics($pdo, $user_id, $user_role, $date_range));
             break;
             
         case 'predictive':
@@ -68,7 +68,7 @@ try {
             
         case 'team':
             if ($user_role === 'manager' || $user_role === 'admin') {
-                echo json_encode(getTeamAnalytics($pdo, $user_id));
+                echo json_encode(getTeamAnalytics($pdo, $user_id, $date_range));
             } else {
                 http_response_code(403);
                 echo json_encode(['error' => 'Access denied']);
@@ -76,7 +76,7 @@ try {
             break;
             
         case 'dashboard_summary':
-            echo json_encode(getDashboardSummary($pdo, $user_id, $user_role));
+            echo json_encode(getDashboardSummary($pdo, $user_id, $user_role, $date_range));
             break;
             
         default:
@@ -153,9 +153,9 @@ function getRevenueAnalytics($pdo, $date_range) {
 /**
  * Get inventory analytics data
  */
-function getInventoryAnalytics($pdo) {
+function getInventoryAnalytics($pdo, $date_range = '7d') {
     try {
-        // Get actual inventory counts
+        // Get actual inventory counts (inventory levels don't change based on date range)
         $inventory_stats = $pdo->query("
             SELECT 
                 COUNT(CASE WHEN quantity > 10 THEN 1 END) as in_stock,
@@ -283,8 +283,9 @@ function getLeadsAnalytics($pdo, $date_range) {
 /**
  * Get workflow analytics data
  */
-function getWorkflowAnalytics($pdo, $user_id, $user_role) {
+function getWorkflowAnalytics($pdo, $user_id, $user_role, $date_range = '7d') {
     try {
+        $days = getDaysFromRange($date_range);
         $workflow_stats = $pdo->query("
             SELECT 
                 COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
@@ -292,6 +293,7 @@ function getWorkflowAnalytics($pdo, $user_id, $user_role) {
                 COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
                 COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled
             FROM workflows
+            WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL $days DAY)
         ")->fetch();
         
         return [
@@ -328,9 +330,10 @@ function getWorkflowAnalytics($pdo, $user_id, $user_role) {
 /**
  * Get user activity analytics
  */
-function getUserActivityAnalytics($pdo) {
+function getUserActivityAnalytics($pdo, $date_range = '7d') {
     $hours = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'];
     $activity_data = [];
+    $days = getDaysFromRange($date_range);
     
     // Get actual user activity data from database
     foreach ($hours as $index => $hour) {
@@ -339,14 +342,14 @@ function getUserActivityAnalytics($pdo) {
             $hour_start = sprintf('%02d:00:00', $index * 4);
             $hour_end = sprintf('%02d:59:59', ($index * 4) + 3);
             
-            // Get actual login activity for this time range today
+            // Get actual login activity for this time range over the date range
             $activity_query = $pdo->prepare("
                 SELECT COUNT(DISTINCT user_id) as active_users
                 FROM `user_sessions` 
-                WHERE DATE(login_time) = CURDATE() 
+                WHERE DATE(login_time) >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
                 AND TIME(login_time) BETWEEN ? AND ?
             ");
-            $activity_query->execute([$hour_start, $hour_end]);
+            $activity_query->execute([$days, $hour_start, $hour_end]);
             $result = $activity_query->fetch();
             $activity_count = $result ? (int)$result['active_users'] : 0;
         } catch (Exception $e) {
@@ -356,10 +359,10 @@ function getUserActivityAnalytics($pdo) {
                 $alt_query = $pdo->prepare("
                     SELECT COUNT(DISTINCT created_by) as active_users
                     FROM workflows 
-                    WHERE DATE(created_at) = CURDATE() 
+                    WHERE DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
                     AND TIME(created_at) BETWEEN ? AND ?
                 ");
-                $alt_query->execute([$hour_start, $hour_end]);
+                $alt_query->execute([$days, $hour_start, $hour_end]);
                 $result = $alt_query->fetch();
                 $activity_count = $result ? (int)$result['active_users'] : 0;
             } catch (Exception $e2) {
@@ -389,15 +392,16 @@ function getUserActivityAnalytics($pdo) {
 /**
  * Get performance metrics
  */
-function getPerformanceMetrics($pdo, $user_id, $user_role) {
+function getPerformanceMetrics($pdo, $user_id, $user_role, $date_range = '7d') {
     // Calculate actual performance based on real database data
     $performance_data = [];
     $target_data = [];
+    $days = getDaysFromRange($date_range);
     
     try {
         // Sales performance (based on actual sales/outbound_sales)
-        $sales_query = $pdo->prepare("SELECT COUNT(*) as count FROM outbound_sales WHERE DATE(deduction_date) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)");
-        $sales_query->execute();
+        $sales_query = $pdo->prepare("SELECT COUNT(*) as count FROM outbound_sales WHERE DATE(deduction_date) >= DATE_SUB(CURDATE(), INTERVAL ? DAY)");
+        $sales_query->execute([$days]);
         $sales_count = $sales_query->fetchColumn() ?: 0;
         $sales_performance = min(100, ($sales_count / 30) * 10); // Scale to percentage
         
@@ -407,23 +411,23 @@ function getPerformanceMetrics($pdo, $user_id, $user_role) {
         $inventory_performance = $inventory_query->fetchColumn() ?: 0;
         
         // Leads performance (based on conversion rate)
-        $leads_total_query = $pdo->prepare("SELECT COUNT(*) as total FROM leads WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)");
-        $leads_total_query->execute();
+        $leads_total_query = $pdo->prepare("SELECT COUNT(*) as total FROM leads WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)");
+        $leads_total_query->execute([$days]);
         $leads_total = $leads_total_query->fetchColumn() ?: 1;
         
-        $leads_converted_query = $pdo->prepare("SELECT COUNT(*) as converted FROM leads WHERE status IN ('converted', 'closed_won') AND updated_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)");
-        $leads_converted_query->execute();
+        $leads_converted_query = $pdo->prepare("SELECT COUNT(*) as converted FROM leads WHERE status IN ('converted', 'closed_won') AND updated_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)");
+        $leads_converted_query->execute([$days]);
         $leads_converted = $leads_converted_query->fetchColumn() ?: 0;
         
         $leads_performance = ($leads_converted / $leads_total) * 100;
         
         // Workflows performance (based on completion rate)
-        $workflows_total_query = $pdo->prepare("SELECT COUNT(*) as total FROM workflows WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)");
-        $workflows_total_query->execute();
+        $workflows_total_query = $pdo->prepare("SELECT COUNT(*) as total FROM workflows WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)");
+        $workflows_total_query->execute([$days]);
         $workflows_total = $workflows_total_query->fetchColumn() ?: 1;
         
-        $workflows_completed_query = $pdo->prepare("SELECT COUNT(*) as completed FROM workflows WHERE status = 'completed' AND updated_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)");
-        $workflows_completed_query->execute();
+        $workflows_completed_query = $pdo->prepare("SELECT COUNT(*) as completed FROM workflows WHERE status = 'completed' AND updated_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)");
+        $workflows_completed_query->execute([$days]);
         $workflows_completed = $workflows_completed_query->fetchColumn() ?: 0;
         
         $workflows_performance = ($workflows_completed / $workflows_total) * 100;
@@ -433,19 +437,19 @@ function getPerformanceMetrics($pdo, $user_id, $user_role) {
         $users_total_query->execute();
         $users_total = $users_total_query->fetchColumn() ?: 1;
         
-        $users_active_query = $pdo->prepare("SELECT COUNT(DISTINCT created_by) as active FROM workflows WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)");
-        $users_active_query->execute();
+        $users_active_query = $pdo->prepare("SELECT COUNT(DISTINCT created_by) as active FROM workflows WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)");
+        $users_active_query->execute([$days]);
         $users_active = $users_active_query->fetchColumn() ?: 0;
         
         $users_performance = ($users_active / $users_total) * 100;
         
         // Revenue performance (growth compared to previous period)
-        $current_revenue_query = $pdo->prepare("SELECT COALESCE(SUM(price * quantity), 0) as revenue FROM outbound_sales WHERE deduction_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)");
-        $current_revenue_query->execute();
+        $current_revenue_query = $pdo->prepare("SELECT COALESCE(SUM(price * quantity), 0) as revenue FROM outbound_sales WHERE deduction_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)");
+        $current_revenue_query->execute([$days]);
         $current_revenue = $current_revenue_query->fetchColumn() ?: 0;
         
-        $previous_revenue_query = $pdo->prepare("SELECT COALESCE(SUM(price * quantity), 1) as revenue FROM outbound_sales WHERE deduction_date BETWEEN DATE_SUB(CURDATE(), INTERVAL 60 DAY) AND DATE_SUB(CURDATE(), INTERVAL 30 DAY)");
-        $previous_revenue_query->execute();
+        $previous_revenue_query = $pdo->prepare("SELECT COALESCE(SUM(price * quantity), 1) as revenue FROM outbound_sales WHERE deduction_date BETWEEN DATE_SUB(CURDATE(), INTERVAL ? DAY) AND DATE_SUB(CURDATE(), INTERVAL ? DAY)");
+        $previous_revenue_query->execute([$days * 2, $days]);
         $previous_revenue = $previous_revenue_query->fetchColumn() ?: 1;
         
         $revenue_performance = min(100, ($current_revenue / $previous_revenue) * 50); // Scale to percentage
@@ -671,7 +675,8 @@ function getPersonalAnalytics($pdo, $user_id, $date_range) {
 /**
  * Get team analytics for managers based on real data
  */
-function getTeamAnalytics($pdo, $user_id) {
+function getTeamAnalytics($pdo, $user_id, $date_range = '7d') {
+    $days = getDaysFromRange($date_range);
     try {
         // Get actual team members and their performance
         $team_query = $pdo->prepare("
@@ -681,14 +686,14 @@ function getTeamAnalytics($pdo, $user_id) {
                 COUNT(l.id) as total_leads,
                 COUNT(CASE WHEN l.status IN ('converted', 'closed_won') THEN 1 END) as converted_leads
             FROM users u
-            LEFT JOIN workflows w ON u.id = w.created_by AND w.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-            LEFT JOIN leads l ON u.id = l.created_by AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            LEFT JOIN workflows w ON u.id = w.created_by AND w.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+            LEFT JOIN leads l ON u.id = l.created_by AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
             WHERE u.status = 'approved' AND u.role != 'admin'
             GROUP BY u.id, u.username
             ORDER BY completed_workflows DESC
             LIMIT 5
         ");
-        $team_query->execute();
+        $team_query->execute([$days, $days]);
         $team_data = $team_query->fetchAll(PDO::FETCH_ASSOC);
         
         $team_names = [];
@@ -781,117 +786,118 @@ function getTeamAnalytics($pdo, $user_id) {
 /**
  * Get dashboard summary data based on real database information
  */
-function getDashboardSummary($pdo, $user_id, $user_role) {
+function getDashboardSummary($pdo, $user_id, $user_role, $date_range = '7d') {
+    $days = getDaysFromRange($date_range);
     try {
-        // Calculate total revenue from actual sales data
-        $revenue_query = $pdo->prepare("SELECT COALESCE(SUM(price * quantity), 0) FROM outbound_sales");
-        $revenue_query->execute();
+        // Calculate total revenue from actual sales data over the date range
+        $revenue_query = $pdo->prepare("SELECT COALESCE(SUM(price * quantity), 0) FROM outbound_sales WHERE deduction_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)");
+        $revenue_query->execute([$days]);
         $total_revenue = $revenue_query->fetchColumn() ?: 0;
         
-        // Calculate revenue change (current month vs previous month)
-        $current_month_query = $pdo->prepare("
+        // Calculate revenue change (current period vs previous period)
+        $current_period_query = $pdo->prepare("
             SELECT COALESCE(SUM(price * quantity), 0) FROM outbound_sales 
-            WHERE MONTH(deduction_date) = MONTH(CURDATE()) AND YEAR(deduction_date) = YEAR(CURDATE())
+            WHERE deduction_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
         ");
-        $current_month_query->execute();
-        $current_month_revenue = $current_month_query->fetchColumn() ?: 1;
+        $current_period_query->execute([$days]);
+        $current_period_revenue = $current_period_query->fetchColumn() ?: 1;
         
-        $previous_month_query = $pdo->prepare("
+        $previous_period_query = $pdo->prepare("
             SELECT COALESCE(SUM(price * quantity), 1) FROM outbound_sales 
-            WHERE MONTH(deduction_date) = MONTH(CURDATE()) - 1 AND YEAR(deduction_date) = YEAR(CURDATE())
+            WHERE deduction_date BETWEEN DATE_SUB(CURDATE(), INTERVAL ? DAY) AND DATE_SUB(CURDATE(), INTERVAL ? DAY)
         ");
-        $previous_month_query->execute();
-        $previous_month_revenue = $previous_month_query->fetchColumn() ?: 1;
+        $previous_period_query->execute([$days * 2, $days]);
+        $previous_period_revenue = $previous_period_query->fetchColumn() ?: 1;
         
-        $revenue_change = (($current_month_revenue - $previous_month_revenue) / $previous_month_revenue) * 100;
+        $revenue_change = (($current_period_revenue - $previous_period_revenue) / $previous_period_revenue) * 100;
         
         // Get active inventory count
         $inventory_query = $pdo->prepare("SELECT COUNT(*) FROM inventory WHERE quantity > 0");
         $inventory_query->execute();
         $active_inventory = $inventory_query->fetchColumn() ?: 0;
         
-        // Calculate inventory change (items added this week vs last week)
-        $this_week_query = $pdo->prepare("
+        // Calculate inventory change (items added in current period vs previous period)
+        $current_period_inventory_query = $pdo->prepare("
             SELECT COUNT(*) FROM inventory 
-            WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 1 WEEK)
+            WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
         ");
-        $this_week_query->execute();
-        $this_week_inventory = $this_week_query->fetchColumn() ?: 0;
+        $current_period_inventory_query->execute([$days]);
+        $current_period_inventory = $current_period_inventory_query->fetchColumn() ?: 0;
         
-        $last_week_query = $pdo->prepare("
+        $previous_period_inventory_query = $pdo->prepare("
             SELECT COUNT(*) FROM inventory 
-            WHERE created_at BETWEEN DATE_SUB(CURDATE(), INTERVAL 2 WEEK) AND DATE_SUB(CURDATE(), INTERVAL 1 WEEK)
+            WHERE created_at BETWEEN DATE_SUB(CURDATE(), INTERVAL ? DAY) AND DATE_SUB(CURDATE(), INTERVAL ? DAY)
         ");
-        $last_week_query->execute();
-        $last_week_inventory = $last_week_query->fetchColumn() ?: 1;
+        $previous_period_inventory_query->execute([$days * 2, $days]);
+        $previous_period_inventory = $previous_period_inventory_query->fetchColumn() ?: 1;
         
-        $inventory_change = (($this_week_inventory - $last_week_inventory) / $last_week_inventory) * 100;
+        $inventory_change = (($current_period_inventory - $previous_period_inventory) / $previous_period_inventory) * 100;
         
         // Get new leads count
-        $new_leads_query = $pdo->prepare("SELECT COUNT(*) FROM leads WHERE status = 'new'");
-        $new_leads_query->execute();
+        $new_leads_query = $pdo->prepare("SELECT COUNT(*) FROM leads WHERE status = 'new' AND created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)");
+        $new_leads_query->execute([$days]);
         $new_leads = $new_leads_query->fetchColumn() ?: 0;
         
-        // Calculate leads change (new leads this week vs last week)
-        $this_week_leads_query = $pdo->prepare("
+        // Calculate leads change (new leads in current period vs previous period)
+        $current_period_leads_query = $pdo->prepare("
             SELECT COUNT(*) FROM leads 
-            WHERE status = 'new' AND created_at >= DATE_SUB(CURDATE(), INTERVAL 1 WEEK)
+            WHERE status = 'new' AND created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
         ");
-        $this_week_leads_query->execute();
-        $this_week_leads = $this_week_leads_query->fetchColumn() ?: 0;
+        $current_period_leads_query->execute([$days]);
+        $current_period_leads = $current_period_leads_query->fetchColumn() ?: 0;
         
-        $last_week_leads_query = $pdo->prepare("
+        $previous_period_leads_query = $pdo->prepare("
             SELECT COUNT(*) FROM leads 
-            WHERE status = 'new' AND created_at BETWEEN DATE_SUB(CURDATE(), INTERVAL 2 WEEK) AND DATE_SUB(CURDATE(), INTERVAL 1 WEEK)
+            WHERE status = 'new' AND created_at BETWEEN DATE_SUB(CURDATE(), INTERVAL ? DAY) AND DATE_SUB(CURDATE(), INTERVAL ? DAY)
         ");
-        $last_week_leads_query->execute();
-        $last_week_leads = $last_week_leads_query->fetchColumn() ?: 1;
+        $previous_period_leads_query->execute([$days * 2, $days]);
+        $previous_period_leads = $previous_period_leads_query->fetchColumn() ?: 1;
         
-        $leads_change = (($this_week_leads - $last_week_leads) / $last_week_leads) * 100;
+        $leads_change = (($current_period_leads - $previous_period_leads) / $previous_period_leads) * 100;
         
-        // Calculate system efficiency based on workflow completion rate
-        $total_workflows_query = $pdo->prepare("SELECT COUNT(*) FROM workflows");
-        $total_workflows_query->execute();
+        // Calculate system efficiency based on workflow completion rate over date range
+        $total_workflows_query = $pdo->prepare("SELECT COUNT(*) FROM workflows WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)");
+        $total_workflows_query->execute([$days]);
         $total_workflows = $total_workflows_query->fetchColumn() ?: 1;
         
-        $completed_workflows_query = $pdo->prepare("SELECT COUNT(*) FROM workflows WHERE status = 'completed'");
-        $completed_workflows_query->execute();
+        $completed_workflows_query = $pdo->prepare("SELECT COUNT(*) FROM workflows WHERE status = 'completed' AND created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)");
+        $completed_workflows_query->execute([$days]);
         $completed_workflows = $completed_workflows_query->fetchColumn() ?: 0;
         
         $system_efficiency = ($completed_workflows / $total_workflows) * 100;
         
-        // Calculate efficiency change (this month vs last month)
-        $this_month_total_query = $pdo->prepare("
+        // Calculate efficiency change (current period vs previous period)
+        $current_period_total_query = $pdo->prepare("
             SELECT COUNT(*) FROM workflows 
-            WHERE MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())
+            WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
         ");
-        $this_month_total_query->execute();
-        $this_month_total = $this_month_total_query->fetchColumn() ?: 1;
+        $current_period_total_query->execute([$days]);
+        $current_period_total = $current_period_total_query->fetchColumn() ?: 1;
         
-        $this_month_completed_query = $pdo->prepare("
+        $current_period_completed_query = $pdo->prepare("
             SELECT COUNT(*) FROM workflows 
-            WHERE status = 'completed' AND MONTH(updated_at) = MONTH(CURDATE()) AND YEAR(updated_at) = YEAR(CURDATE())
+            WHERE status = 'completed' AND updated_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
         ");
-        $this_month_completed_query->execute();
-        $this_month_completed = $this_month_completed_query->fetchColumn() ?: 0;
+        $current_period_completed_query->execute([$days]);
+        $current_period_completed = $current_period_completed_query->fetchColumn() ?: 0;
         
-        $last_month_total_query = $pdo->prepare("
+        $previous_period_total_query = $pdo->prepare("
             SELECT COUNT(*) FROM workflows 
-            WHERE MONTH(created_at) = MONTH(CURDATE()) - 1 AND YEAR(created_at) = YEAR(CURDATE())
+            WHERE created_at BETWEEN DATE_SUB(CURDATE(), INTERVAL ? DAY) AND DATE_SUB(CURDATE(), INTERVAL ? DAY)
         ");
-        $last_month_total_query->execute();
-        $last_month_total = $last_month_total_query->fetchColumn() ?: 1;
+        $previous_period_total_query->execute([$days * 2, $days]);
+        $previous_period_total = $previous_period_total_query->fetchColumn() ?: 1;
         
-        $last_month_completed_query = $pdo->prepare("
+        $previous_period_completed_query = $pdo->prepare("
             SELECT COUNT(*) FROM workflows 
-            WHERE status = 'completed' AND MONTH(updated_at) = MONTH(CURDATE()) - 1 AND YEAR(updated_at) = YEAR(CURDATE())
+            WHERE status = 'completed' AND updated_at BETWEEN DATE_SUB(CURDATE(), INTERVAL ? DAY) AND DATE_SUB(CURDATE(), INTERVAL ? DAY)
         ");
-        $last_month_completed_query->execute();
-        $last_month_completed = $last_month_completed_query->fetchColumn() ?: 0;
+        $previous_period_completed_query->execute([$days * 2, $days]);
+        $previous_period_completed = $previous_period_completed_query->fetchColumn() ?: 0;
         
-        $this_month_efficiency = ($this_month_completed / $this_month_total) * 100;
-        $last_month_efficiency = ($last_month_completed / $last_month_total) * 100;
-        $efficiency_change = $this_month_efficiency - $last_month_efficiency;
+        $current_period_efficiency = ($current_period_completed / $current_period_total) * 100;
+        $previous_period_efficiency = ($previous_period_completed / $previous_period_total) * 100;
+        $efficiency_change = $current_period_efficiency - $previous_period_efficiency;
         
         $summary = [
             'total_revenue' => round($total_revenue),

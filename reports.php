@@ -30,21 +30,17 @@ $inventory_report = $pdo->query("
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Business Reports</title>
+    <title>Business Reports - BizAutoPro</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
-<div class="container-fluid bg-primary text-white p-3 mb-4">
-    <div class="container">
-        <h1 class="display-6 mb-0">BizAutoPro</h1>
-    </div>
-</div>
+<!-- Include Responsive Header -->
+<?php require_once 'includes/page-header.php'; ?>
 
-    <div class="container mt-4">
-        <h2>Business Intelligence Dashboard</h2>
-        
+    <div class="container mt-4">        
         <div class="row mt-4">
             <div class="col-md-8">
                 <div class="card">

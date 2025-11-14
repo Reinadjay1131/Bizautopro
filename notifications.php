@@ -141,18 +141,16 @@ function timeAgo($datetime) {
     </style>
 </head>
 <body>
+    <!-- Include Responsive Header -->
+    <?php require_once 'includes/page-header.php'; ?>
+    
     <div class="container mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <a href="dashboard.php" class="btn btn-secondary btn-sm me-2">
-                    <i class="bi bi-arrow-left"></i> <span class="d-none d-sm-inline">Back to Dashboard</span>
-                </a>
-                <h2 class="d-inline-block mb-0">
-                    <i class="bi bi-bell-fill"></i> Notifications
-                    <?php if ($unread_total > 0): ?>
-                        <span class="badge bg-danger"><?= $unread_total ?></span>
-                    <?php endif; ?>
-                </h2>
+                <p class="text-muted mb-2">Stay updated with system alerts and messages</p>
+                <?php if ($unread_total > 0): ?>
+                    <span class="badge bg-danger"><?= $unread_total ?> Unread</span>
+                <?php endif; ?>
             </div>
             <div class="btn-group btn-group-sm">
                 <?php if ($unread_total > 0): ?>

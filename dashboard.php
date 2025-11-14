@@ -284,11 +284,12 @@ for ($i = 0; $i < 7; $i++) {
             margin-bottom: 1rem;
         }
         .analytics-card {
-            background: white;
+            background: transparent;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             padding: 1rem;
             margin-bottom: 1rem;
+            border: 1px solid rgba(241,245,249,0.3);
         }
         .analytics-header {
             display: flex;
@@ -316,8 +317,10 @@ for ($i = 0; $i < 7; $i++) {
             font-size: 0.8rem;
         }
         .metric-card {
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-            color: white;
+            background: rgba(79, 70, 229, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(79, 70, 229, 0.2);
+            color: var(--text-primary);
             border-radius: 8px;
             padding: 1rem;
             text-align: center;
@@ -326,11 +329,13 @@ for ($i = 0; $i < 7; $i++) {
             font-size: 1.6rem;
             font-weight: 700;
             margin-bottom: 0.25rem;
+            color: var(--primary-color);
         }
         .metric-label {
             font-size: 0.8rem;
-            opacity: 0.9;
+            opacity: 0.8;
             line-height: 1.2;
+            color: var(--text-light);
         }
         .metric-change {
             font-size: 0.7rem;
@@ -584,310 +589,611 @@ for ($i = 0; $i < 7; $i++) {
             color: rgba(255, 255, 255, 0.9);
         }
         
-        .badge {
-            font-size: 0.75rem;
+        /* Modern Dashboard Animations */
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
+        
+        .slide-up {
+            animation: slideUp 0.6s ease-out forwards;
+        }
+        
+        /* Hover Effects for KPI Cards */
+        .kpi-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        
+        .kpi-card:hover {
+            transform: translateY(-8px) scale(1.02) !important;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2) !important;
+        }
+        
+        /* Chart Card Transitions */
+        .chart-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        
+        /* Export Button Hover */
+        .export-btn:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2) !important;
+        }
+        
+        /* Date Filter Styling */
+        #dateRangeFilter:hover {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+        }
+        
+        #dateRangeFilter:focus {
+            outline: none !important;
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+        }
+        
+        /* Loading Animation */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            backdrop-filter: blur(5px);
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(59, 130, 246, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #3b82f6;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .kpi-grid {
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
+            }
+            
+            .charts-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0 !important;
+            }
+            
+            .top-header {
+                padding: 1rem !important;
+            }
+            
+            .top-header > div {
+                flex-direction: column !important;
+                gap: 1rem !important;
+            }
+            
+            .dashboard-content {
+                padding: 1rem !important;
+            }
+            
+            .kpi-card {
+                padding: 1.5rem !important;
+            }
+        }
+        
+        /* Enhanced Header Styles */
+        .date-filter:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15) !important;
+            border-color: rgba(255,255,255,0.4) !important;
+        }
+        
+        .date-filter:focus {
+            outline: none;
+            border-color: rgba(255,255,255,0.5) !important;
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.2) !important;
+        }
+        
+        .user-info:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15) !important;
+            background: rgba(255,255,255,0.25) !important;
+        }
+        
+        /* Header Animation */
+        .top-header {
+            animation: headerSlide 0.8s ease-out;
+        }
+        
+        @keyframes headerSlide {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Chart Animations */
+        .all-charts-grid {
+            animation: chartsSlideIn 1.2s ease-out;
+        }
+        
+        .chart-card, .analytics-card {
+            opacity: 0;
+            animation: chartFadeInUp 0.8s ease-out forwards;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Staggered animation delays for each chart */
+        .chart-card:nth-child(1), .analytics-card:nth-child(1) { animation-delay: 0.1s; }
+        .chart-card:nth-child(2), .analytics-card:nth-child(2) { animation-delay: 0.2s; }
+        .chart-card:nth-child(3), .analytics-card:nth-child(3) { animation-delay: 0.3s; }
+        .chart-card:nth-child(4), .analytics-card:nth-child(4) { animation-delay: 0.4s; }
+        .chart-card:nth-child(5), .analytics-card:nth-child(5) { animation-delay: 0.5s; }
+        .chart-card:nth-child(6), .analytics-card:nth-child(6) { animation-delay: 0.6s; }
+        .chart-card:nth-child(7), .analytics-card:nth-child(7) { animation-delay: 0.7s; }
+        .chart-card:nth-child(8), .analytics-card:nth-child(8) { animation-delay: 0.8s; }
+        .chart-card:nth-child(9), .analytics-card:nth-child(9) { animation-delay: 0.9s; }
+        
+        @keyframes chartsSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes chartFadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        /* Hover animations */
+        .chart-card:hover, .analytics-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+        
+        .chart-card:hover .export-btn {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+        
+        /* Chart container animations */
+        .chart-container {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .chart-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            animation: shimmer 2s ease-in-out infinite;
+            z-index: 1;
+        }
+        
+        @keyframes shimmer {
+            0% { left: -100%; }
+            50% { left: 100%; }
+            100% { left: 100%; }
+        }
+        
+        /* Chart title animations */
+        .chart-title, h3 {
+            animation: titleSlideIn 0.8s ease-out forwards;
+            animation-delay: 0.2s;
+            opacity: 0;
+        }
+        
+        .chart-subtitle, p {
+            animation: subtitleFadeIn 1s ease-out forwards;
+            animation-delay: 0.4s;
+            opacity: 0;
+        }
+        
+        @keyframes titleSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes subtitleFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Export button animations */
+        .export-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .export-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.5s ease;
+        }
+        
+        .export-btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        .export-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* Loading skeleton animation for charts */
+        .chart-loading {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+        
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
     </style>
 </head>
 <body class="fade-in">
-    <!-- Modern Navigation -->
-    <nav class="modern-navbar">
-        <div class="modern-container">
-            <div class="navbar-content">
-                <a href="#" class="brand">
-                    <i class="bi bi-grid-3x3-gap-fill"></i>
-                    BizAutoPro
-                </a>
-                <div class="nav-user">
-                    <div class="user-info">
-                        <span>Welcome, <?= htmlspecialchars($user['username']) ?></span>
-                        <span class="user-role"><?= ucfirst($user['role']) ?> Dashboard</span>
+    <!-- Include Dark Sidebar Navigation -->
+    <?php require_once 'includes/navigation.php'; ?>
+
+    <!-- Page Wrapper -->
+    <div class="page-wrapper">
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <!-- Modern Top Header -->
+            <div class="top-header" style="
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                padding: 2rem 1.5rem 2rem 1rem; 
+                box-shadow: 0 8px 32px rgba(102, 126, 234, 0.15);
+                border-bottom: none;
+                position: relative;
+                overflow: hidden;
+            ">
+                <!-- Decorative Background Elements -->
+                <div style="
+                    position: absolute; 
+                    top: -50%; 
+                    right: -10%; 
+                    width: 200px; 
+                    height: 200px; 
+                    background: rgba(255,255,255,0.1); 
+                    border-radius: 50%; 
+                    filter: blur(40px);
+                "></div>
+                <div style="
+                    position: absolute; 
+                    bottom: -30%; 
+                    left: -5%; 
+                    width: 150px; 
+                    height: 150px; 
+                    background: rgba(255,255,255,0.08); 
+                    border-radius: 50%; 
+                    filter: blur(30px);
+                "></div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 2;">
+                    <div style="max-width: 60%;">
+                        <h1 style="
+                            font-size: 2.5rem; 
+                            font-weight: 800; 
+                            color: white; 
+                            margin: 0; 
+                            margin-bottom: 0.75rem;
+                            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                            letter-spacing: -0.025em;
+                        ">Analytics Dashboard</h1>
+                        <p style="
+                            color: rgba(255,255,255,0.9); 
+                            margin: 0; 
+                            font-size: 1.125rem;
+                            font-weight: 400;
+                            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+                            line-height: 1.5;
+                        ">Monitor your business operations with comprehensive data insights</p>
                     </div>
-                    <a href="logout.php" class="btn-modern btn-secondary btn-sm">
-                        <i class="bi bi-box-arrow-right"></i>
-                        Logout
-                    </a>
+                    <div style="display: flex; align-items: center; gap: 1.5rem; position: relative; z-index: 2;">
+                        <select id="dateRangeFilter" class="date-filter" style="
+                            padding: 1rem 1.25rem; 
+                            border: 2px solid rgba(255,255,255,0.2); 
+                            border-radius: 16px; 
+                            background: rgba(255,255,255,0.15); 
+                            backdrop-filter: blur(10px);
+                            font-weight: 600; 
+                            color: white; 
+                            cursor: pointer; 
+                            transition: all 0.3s ease;
+                            font-size: 0.95rem;
+                            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                        ">
+                            <option value="7d" style="background: #667eea; color: white;">Last 7 Days</option>
+                            <option value="30d" style="background: #667eea; color: white;">Last 30 Days</option>
+                            <option value="90d" style="background: #667eea; color: white;">Last 3 Months</option>
+                            <option value="1y" style="background: #667eea; color: white;">Last Year</option>
+                        </select>
+                        <div class="user-info" style="
+                            background: rgba(255,255,255,0.2); 
+                            backdrop-filter: blur(10px);
+                            color: white; 
+                            padding: 1rem 1.5rem; 
+                            border-radius: 16px; 
+                            font-weight: 600;
+                            border: 2px solid rgba(255,255,255,0.15);
+                            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                            display: flex;
+                            align-items: center;
+                            gap: 0.5rem;
+                        ">
+                            <i class="bi bi-person-circle" style="font-size: 1.25rem;"></i>
+                            <span><?= htmlspecialchars($user['username']) ?> (<?= ucfirst($user['role']) ?>)</span>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </nav>
 
-    <!-- Page Header -->
-    <div class="page-header">
-        <div class="modern-container">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h1 class="page-title">Analytics</h1>
-                    <p class="page-subtitle">Monitor your business operations with comprehensive data insights</p>
-                </div>
-                <div>
-                    <select id="dateRangeFilter" class="date-filter">
-                        <option value="7d">Last 7 Days</option>
-                        <option value="30d">Last 30 Days</option>
-                        <option value="90d">Last 3 Months</option>
-                        <option value="1y">Last Year</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-    </div>
+            <!-- Dashboard Content -->
+            <div class="dashboard-content" style="padding: 0rem 1rem 2rem 0rem;">
+                <!-- Notification Widget -->
+                <?php 
+                require_once 'notification_widget.php';
+                $notification_widget = new NotificationWidget($pdo, $user_id, $_SESSION['role']);
+                echo $notification_widget->render();
+                ?>
+                
+                <!-- Modern KPI Cards -->
+                <div class="kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 1rem; margin-top: 0.5rem;">
+                    <!-- Revenue Card -->
+                    <div class="kpi-card" style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 2rem; border-radius: 16px; box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3); position: relative; overflow: hidden;">
+                        <div style="position: absolute; top: -50%; right: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); pointer-events: none;"></div>
+                        <div style="position: relative; z-index: 2;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                                <i class="bi bi-currency-dollar" style="font-size: 2rem; opacity: 0.8;"></i>
+                                <span style="font-size: 0.875rem; opacity: 0.9; background: rgba(255,255,255,0.2); padding: 0.25rem 0.75rem; border-radius: 20px;">Revenue</span>
+                            </div>
+                            <h3 style="font-size: 2.5rem; font-weight: 700; margin: 0 0 0.5rem 0;">₦<?= number_format($total_revenue/1000, 0) ?>K</h3>
+                            <p style="margin: 0; opacity: 0.9; font-size: 0.95rem;">
+                                <i class="bi bi-<?= $revenue_change >= 0 ? 'arrow-up' : 'arrow-down' ?>"></i>
+                                <?= $revenue_change >= 0 ? '+' : '' ?><?= number_format($revenue_change, 1) ?>% from last period
+                            </p>
+                        </div>
+                    </div>
 
-    <!-- Main Content -->
-    <div class="modern-container analytics-dashboard">
-        <!-- Notification Widget -->
-        <?php 
-        require_once 'notification_widget.php';
-        $notification_widget = new NotificationWidget($pdo, $user_id, $_SESSION['role']);
-        echo $notification_widget->render();
-        ?>
+                    <!-- Workflows Card -->
+                    <div class="kpi-card" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white; padding: 2rem; border-radius: 16px; box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3); position: relative; overflow: hidden; cursor: pointer;" onclick="window.location.href='workflows.php'">
+                        <div style="position: absolute; top: -50%; right: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); pointer-events: none;"></div>
+                        <div style="position: relative; z-index: 2;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                                <i class="bi bi-diagram-3-fill" style="font-size: 2rem; opacity: 0.8;"></i>
+                                <span style="font-size: 0.875rem; opacity: 0.9; background: rgba(255,255,255,0.2); padding: 0.25rem 0.75rem; border-radius: 20px;">Overdue</span>
+                            </div>
+                            <h3 style="font-size: 2.5rem; font-weight: 700; margin: 0 0 0.5rem 0;"><?= $workflow_analytics['overdue']['total'] ?></h3>
+                            <p style="margin: 0; opacity: 0.9; font-size: 0.95rem;">
+                                <i class="bi bi-clock"></i>
+                                <?= $workflow_analytics['overdue']['avg_days'] ?> avg days overdue
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Leads Card -->
+                    <div class="kpi-card" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 2rem; border-radius: 16px; box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3); position: relative; overflow: hidden;">
+                        <div style="position: absolute; top: -50%; right: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); pointer-events: none;"></div>
+                        <div style="position: relative; z-index: 2;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                                <i class="bi bi-people-fill" style="font-size: 2rem; opacity: 0.8;"></i>
+                                <span style="font-size: 0.875rem; opacity: 0.9; background: rgba(255,255,255,0.2); padding: 0.25rem 0.75rem; border-radius: 20px;">Leads</span>
+                            </div>
+                            <h3 style="font-size: 2.5rem; font-weight: 700; margin: 0 0 0.5rem 0;"><?= $new_leads ?></h3>
+                            <p style="margin: 0; opacity: 0.9; font-size: 0.95rem;">
+                                <i class="bi bi-graph-up"></i>
+                                New leads this period
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Inventory Card -->
+                    <div class="kpi-card" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; padding: 2rem; border-radius: 16px; box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3); position: relative; overflow: hidden; cursor: pointer;" onclick="window.location.href='inventory.php'">
+                        <div style="position: absolute; top: -50%; right: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); pointer-events: none;"></div>
+                        <div style="position: relative; z-index: 2;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                                <i class="bi bi-boxes" style="font-size: 2rem; opacity: 0.8;"></i>
+                                <span style="font-size: 0.875rem; opacity: 0.9; background: rgba(255,255,255,0.2); padding: 0.25rem 0.75rem; border-radius: 20px;">Inventory</span>
+                            </div>
+                            <h3 style="font-size: 2.5rem; font-weight: 700; margin: 0 0 0.5rem 0;"><?= $inventory_alerts ?></h3>
+                            <p style="margin: 0; opacity: 0.9; font-size: 0.95rem;">
+                                <i class="bi bi-check-circle"></i>
+                                Active items in stock
+                            </p>
+                        </div>
+                    </div>
+                </div>
         
-        <!-- Analytics KPI Tabs -->
-        <div class="grid grid-cols-4 mb-4" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
-            <div class="metric-card compact-kpi success-theme">
-                <div class="metric-value">₦<?= number_format($total_revenue/1000, 0) ?>K</div>
-                <div class="metric-label">Revenue</div>
-                <div class="metric-change <?= $revenue_change_class ?>"><?= $revenue_change >= 0 ? '+' : '' ?><?= number_format($revenue_change, 1) ?>%</div>
-            </div>
-            <div class="metric-card compact-kpi clickable-metric danger-theme" onclick="window.location.href='workflows.php'" style="cursor: pointer;">
-                <div class="metric-value"><?= $workflow_analytics['overdue']['total'] ?></div>
-                <div class="metric-label">Total Overdue</div>
-                <div class="metric-change negative"><?= $workflow_analytics['overdue']['avg_days'] ?> avg days</div>
-            </div>
-            <div class="metric-card compact-kpi info-theme">
-                <div class="metric-value"><?= $new_leads ?></div>
-                <div class="metric-label">New Leads</div>
-                <div class="metric-change <?= $new_leads > 10 ? 'positive' : 'neutral' ?>">This month</div>
-            </div>
-            <div class="metric-card compact-kpi clickable-metric secondary-theme" onclick="window.location.href='inventory.php'" style="cursor: pointer;">
-                <div class="metric-value"><?= $inventory_alerts ?></div>
-                <div class="metric-label">Inventory</div>
-                <div class="metric-change positive">Active items</div>
-            </div>
-        </div>
-        
-        <!-- Charts Grid -->
-        <div class="grid grid-cols-2 mb-5">
-            <!-- Revenue Trend Chart -->
-            <div class="analytics-card">
-                <div class="analytics-header">
-                    <div>
-                        <h3 class="chart-title">Revenue Trends & Forecasting</h3>
-                        <p class="chart-subtitle">Daily revenue with predictive analytics - Showing real data from your sales</p>
-                    </div>
-                    <button class="export-btn" onclick="window.analytics?.exportChartData('revenue')">
-                        <i class="bi bi-download"></i> Export
-                    </button>
-                </div>
-                <div class="chart-container">
-                    <canvas id="revenueChart"></canvas>
-                </div>
-                <div class="chart-info" style="margin-top: 0.5rem; padding: 0.5rem; background-color: #f8f9fa; border-radius: 4px; font-size: 0.8rem; color: #6b7280;">
-                    <i class="bi bi-info-circle"></i> 
-                    <strong>Real Data:</strong> Total revenue ₦<?= number_format($total_revenue, 2) ?>. Chart shows actual daily sales - zeros indicate no sales on those dates.
-                </div>
-            </div>
-
-            <!-- Inventory Distribution -->
-            <div class="analytics-card">
-                <div class="analytics-header">
-                    <div>
-                        <h3 class="chart-title">Inventory Distribution</h3>
-                        <p class="chart-subtitle">Stock levels across categories</p>
-                    </div>
-                    <button class="export-btn" onclick="window.analytics?.exportChartData('inventory')">
-                        <i class="bi bi-download"></i> Export
-                    </button>
-                </div>
-                <div class="chart-container">
-                    <canvas id="inventoryChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Second Row Charts -->
-        <div class="grid grid-cols-2 mb-5">
-            <!-- Leads Conversion Analysis -->
-            <div class="analytics-card">
-                <div class="analytics-header">
-                    <div>
-                        <h3 class="chart-title">Leads Conversion Analysis</h3>
-                        <p class="chart-subtitle">Monthly lead generation and conversion rates</p>
-                    </div>
-                    <button class="export-btn" onclick="window.analytics?.exportChartData('leads')">
-                        <i class="bi bi-download"></i> Export
-                    </button>
-                </div>
-                <div class="chart-container">
-                    <canvas id="leadsChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Third Row Charts -->
-        <div class="grid grid-cols-3 mb-5">
-            <!-- User Activity Heatmap -->
-            <div class="analytics-card">
-                <div class="analytics-header">
-                    <div>
-                        <h3 class="chart-title">User Activity</h3>
-                        <p class="chart-subtitle">Daily active users pattern</p>
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <canvas id="userActivityChart"></canvas>
-                </div>
-            </div>
-
-            <!-- Performance Radar -->
-            <div class="analytics-card">
-                <div class="analytics-header">
-                    <div>
-                        <h3 class="chart-title">Performance Metrics</h3>
-                        <p class="chart-subtitle">Multi-dimensional performance analysis</p>
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <canvas id="performanceChart"></canvas>
-                </div>
-            </div>
-
-            <!-- Predictive Analytics -->
-            <div class="analytics-card">
-                <div class="analytics-header">
-                    <div>
-                        <h3 class="chart-title">Predictive Insights</h3>
-                        <p class="chart-subtitle">AI-powered business forecasting</p>
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <canvas id="predictiveChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Workflow Analytics Section -->
-            <div class="grid grid-cols-3 mb-4">
-                <!-- Workflow Completion Trends -->
-                <div class="analytics-card">
-                    <div class="analytics-header">
-                        <div>
-                            <h3 class="chart-title">Daily Completion Trends</h3>
-                            <p class="chart-subtitle">Tasks completed per day (last 7 days)</p>
-                        </div>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="workflowCompletionChart"></canvas>
-                    </div>
-                </div>
                 
-                <!-- Priority Distribution -->
-                <div class="analytics-card">
-                    <div class="analytics-header">
-                        <div>
-                            <h3 class="chart-title">Priority Distribution</h3>
-                            <p class="chart-subtitle">Task breakdown by priority level</p>
+                <!-- All Charts in 3x3 Grid -->
+                <div class="all-charts-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-bottom: 0.5rem; margin-top: 0.5rem;">
+                    
+                    <!-- Row 1: Revenue, Inventory, Leads -->
+                    <!-- Revenue Trends Chart -->
+                    <div class="chart-card" style="background: transparent; border-radius: 20px; padding: 2rem; box-shadow: 0 10px 40px rgba(0,0,0,0.1); border: 1px solid rgba(241,245,249,0.3);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <div>
+                                <h3 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0 0 0.5rem 0;">Revenue Trends & Forecasting</h3>
+                                <p style="color: #6b7280; margin: 0; font-size: 0.9rem;">Daily revenue with predictive analytics</p>
+                            </div>
+                        </div>
+                        <div class="chart-container" style="position: relative; height: 300px;">
+                            <canvas id="revenueChart"></canvas>
+                        </div>
+                        <div style="margin-top: 1rem; padding: 1rem; background: linear-gradient(135deg, #f8fafc, #f1f5f9); border-radius: 12px; font-size: 0.875rem; color: #64748b; border: 1px solid #e2e8f0;">
+                            <i class="bi bi-info-circle" style="color: #3b82f6;"></i> 
+                            <strong>Real Data:</strong> Total revenue ₦<?= number_format($total_revenue, 2) ?>. Chart shows actual daily sales.
                         </div>
                     </div>
-                    <div class="chart-container">
-                        <canvas id="priorityDistributionChart"></canvas>
-                    </div>
-                </div>
-                
-                <!-- Workflow Status -->
-                <div class="analytics-card">
-                    <div class="analytics-header">
-                        <div>
-                            <h3 class="chart-title">Workflow Status</h3>
-                            <p class="chart-subtitle">Current task status distribution</p>
+
+                    <!-- Inventory Distribution -->
+                    <div class="chart-card" style="background: transparent; border-radius: 20px; padding: 2rem; box-shadow: 0 10px 40px rgba(0,0,0,0.1); border: 1px solid rgba(241,245,249,0.3);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <div>
+                                <h3 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0 0 0.5rem 0;">Inventory Distribution</h3>
+                                <p style="color: #6b7280; margin: 0; font-size: 0.9rem;">Stock levels across categories</p>
+                            </div>
+                        </div>
+                        <div class="chart-container" style="position: relative; height: 300px;">
+                            <canvas id="inventoryChart"></canvas>
                         </div>
                     </div>
-                    <div class="chart-container">
-                        <canvas id="workflowStatusChart"></canvas>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Category and User Performance -->
-            <div class="grid grid-cols-2 mb-4">
-                <!-- Category Performance -->
-                <div class="analytics-card">
-                    <div class="analytics-header">
-                        <div>
-                            <h3 class="chart-title">Category Performance</h3>
-                            <p class="chart-subtitle">Task completion by category</p>
+
+                    <!-- Leads Conversion Analysis -->
+                    <div class="chart-card" style="background: transparent; border-radius: 20px; padding: 2rem; box-shadow: 0 10px 40px rgba(0,0,0,0.1); border: 1px solid rgba(241,245,249,0.3);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <div>
+                                <h3 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0 0 0.5rem 0;">Leads Conversion Analysis</h3>
+                                <p style="color: #6b7280; margin: 0; font-size: 0.9rem;">Monthly lead generation and conversion rates</p>
+                            </div>
+                        </div>
+                        <div class="chart-container" style="position: relative; height: 300px;">
+                            <canvas id="leadsChart"></canvas>
                         </div>
                     </div>
-                    <div class="performance-table">
-                        <table class="table table-striped table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Category</th>
-                                    <th>Total</th>
-                                    <th>Completed</th>
-                                    <th>Rate</th>
-                                    <th>Avg Time</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($workflow_analytics['category_performance'] as $category): ?>
-                                    <?php $completion_rate = $category['total'] > 0 ? round(($category['completed'] / $category['total']) * 100, 1) : 0; ?>
-                                    <tr>
-                                        <td><strong><?= htmlspecialchars($category['category']) ?></strong></td>
-                                        <td><?= $category['total'] ?></td>
-                                        <td><?= $category['completed'] ?></td>
-                                        <td>
-                                            <span class="badge bg-<?= $completion_rate >= 80 ? 'success' : ($completion_rate >= 60 ? 'warning' : 'danger') ?>">
-                                                <?= $completion_rate ?>%
-                                            </span>
-                                        </td>
-                                        <td><?= $category['avg_completion_time'] ? round($category['avg_completion_time'], 1) . 'h' : '-' ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                
-                <!-- User Performance -->
-                <div class="analytics-card">
-                    <div class="analytics-header">
-                        <div>
-                            <h3 class="chart-title">User Performance</h3>
-                            <p class="chart-subtitle">Top performing team members</p>
+                    
+                    <!-- Row 2: User Activity, Performance, Predictive -->
+                    <!-- User Activity Heatmap -->
+                    <div class="analytics-card">
+                        <div class="analytics-header">
+                            <div>
+                                <h3 class="chart-title">User Activity</h3>
+                                <p class="chart-subtitle">Daily active users pattern</p>
+                            </div>
+                        </div>
+                        <div class="chart-container" style="display: flex; justify-content: center; align-items: flex-end; padding-bottom: 1rem;">
+                            <canvas id="userActivityChart"></canvas>
                         </div>
                     </div>
-                    <div class="performance-table">
-                        <table class="table table-striped table-sm">
-                            <thead>
-                                <tr>
-                                    <th>User</th>
-                                    <th>Assigned</th>
-                                    <th>Completed</th>
-                                    <th>Rate</th>
-                                    <th>Avg Time</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($workflow_analytics['user_performance'] as $user): ?>
-                                    <?php $completion_rate = $user['assigned_tasks'] > 0 ? round(($user['completed_tasks'] / $user['assigned_tasks']) * 100, 1) : 0; ?>
-                                    <tr>
-                                        <td><strong><?= htmlspecialchars($user['username']) ?></strong></td>
-                                        <td><?= $user['assigned_tasks'] ?></td>
-                                        <td><?= $user['completed_tasks'] ?></td>
-                                        <td>
-                                            <span class="badge bg-<?= $completion_rate >= 80 ? 'success' : ($completion_rate >= 60 ? 'warning' : 'danger') ?>">
-                                                <?= $completion_rate ?>%
-                                            </span>
-                                        </td>
-                                        <td><?= $user['avg_completion_time'] ? round($user['avg_completion_time'], 1) . 'h' : '-' ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+
+                    <!-- Performance Radar -->
+                    <div class="analytics-card">
+                        <div class="analytics-header">
+                            <div>
+                                <h3 class="chart-title">Performance Metrics</h3>
+                                <p class="chart-subtitle">Multi-dimensional performance analysis</p>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="performanceChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Predictive Analytics -->
+                    <div class="analytics-card">
+                        <div class="analytics-header">
+                            <div>
+                                <h3 class="chart-title">Predictive Insights</h3>
+                                <p class="chart-subtitle">AI-powered business forecasting</p>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="predictiveChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Row 3: Daily Completion, Priority, Workflow Status -->
+                    <!-- Daily Completion Trends -->
+                    <div class="analytics-card">
+                        <div class="analytics-header">
+                            <div>
+                                <h3 class="chart-title">Daily Completion Trends</h3>
+                                <p class="chart-subtitle">Tasks completed per day (last 7 days)</p>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="workflowCompletionChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Priority Distribution -->
+                    <div class="analytics-card">
+                        <div class="analytics-header">
+                            <div>
+                                <h3 class="chart-title">Priority Distribution</h3>
+                                <p class="chart-subtitle">Task breakdown by priority level</p>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="priorityDistributionChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Workflow Status -->
+                    <div class="analytics-card">
+                        <div class="analytics-header">
+                            <div>
+                                <h3 class="chart-title">Workflow Status</h3>
+                                <p class="chart-subtitle">Current task status distribution</p>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="workflowStatusChart"></canvas>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
 
         <!-- Content Grid -->
         <div class="grid grid-cols-2">
@@ -1007,6 +1313,93 @@ for ($i = 0; $i < 7; $i++) {
     <!-- Analytics JavaScript -->
     <script src="assets/js/theme-manager.js"></script>
     <script>
+        // Enhanced Chart Animations and Loading Effects
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add loading skeleton to all charts initially
+            const chartContainers = document.querySelectorAll('.chart-container');
+            chartContainers.forEach(container => {
+                container.classList.add('chart-loading');
+            });
+            
+            // Remove loading skeleton after a delay
+            setTimeout(() => {
+                chartContainers.forEach(container => {
+                    container.classList.remove('chart-loading');
+                });
+            }, 2000);
+            
+            // Staggered chart initialization
+            const charts = document.querySelectorAll('canvas[id*="Chart"]');
+            charts.forEach((chart, index) => {
+                setTimeout(() => {
+                    // Add a subtle glow effect when chart loads
+                    chart.style.transition = 'all 0.5s ease';
+                    chart.style.filter = 'drop-shadow(0 0 20px rgba(59, 130, 246, 0.3))';
+                    
+                    // Remove glow after animation
+                    setTimeout(() => {
+                        chart.style.filter = 'none';
+                    }, 1000);
+                }, index * 200);
+            });
+        });
+        
+        // Global Chart.js animation configuration
+        Chart.defaults.animation = {
+            duration: 2000,
+            easing: 'easeOutQuart'
+        };
+        
+        // Enhanced animation options for all charts
+        const chartAnimationConfig = {
+            animation: {
+                duration: 2000,
+                easing: 'easeOutQuart',
+                delay: (context) => {
+                    let delay = 0;
+                    if (context.type === 'data' && context.mode === 'default') {
+                        delay = context.dataIndex * 100 + context.datasetIndex * 300;
+                    }
+                    return delay;
+                }
+            },
+            animations: {
+                tension: {
+                    duration: 1000,
+                    easing: 'linear',
+                    from: 0.1,
+                    to: 0.4,
+                    loop: false
+                },
+                y: {
+                    duration: 2000,
+                    easing: 'easeOutBounce',
+                    from: (ctx) => ctx.chart.scales.y?.min || 0
+                },
+                x: {
+                    duration: 1500,
+                    easing: 'easeOutQuart'
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                legend: {
+                    onHover: function(e, legendItem, legend) {
+                        legend.chart.canvas.style.cursor = 'pointer';
+                        legend.chart.canvas.style.transform = 'scale(1.02)';
+                        legend.chart.canvas.style.transition = 'transform 0.3s ease';
+                    },
+                    onLeave: function(e, legendItem, legend) {
+                        legend.chart.canvas.style.cursor = 'default';
+                        legend.chart.canvas.style.transform = 'scale(1)';
+                    }
+                }
+            }
+        };
+        
         // Embed real data from PHP into JavaScript
         const realChartData = {
             revenue: {
@@ -1077,6 +1470,18 @@ for ($i = 0; $i < 7; $i++) {
                 }]
             }
         };
+        
+        // Function to enhance chart options with animations
+        function enhanceChartOptions(baseOptions) {
+            return {
+                ...baseOptions,
+                ...chartAnimationConfig,
+                plugins: {
+                    ...baseOptions.plugins,
+                    ...chartAnimationConfig.plugins
+                }
+            };
+        }
 
         // Initialize analytics dashboard with real data
         let analytics;
@@ -1104,12 +1509,16 @@ for ($i = 0; $i < 7; $i++) {
                         type: 'line',
                         data: realChartData.revenue,
                         options: {
+                            ...chartAnimationConfig,
                             responsive: true,
                             maintainAspectRatio: false,
                             plugins: {
                                 title: {
                                     display: true,
                                     text: 'Daily Revenue Trends'
+                                },
+                                legend: {
+                                    ...chartAnimationConfig.plugins.legend
                                 }
                             },
                             scales: {
@@ -1139,7 +1548,7 @@ for ($i = 0; $i < 7; $i++) {
                     const leadsChart = new Chart(leadsCtx, {
                         type: 'doughnut',
                         data: realChartData.leads,
-                        options: {
+                        options: enhanceChartOptions({
                             responsive: true,
                             maintainAspectRatio: false,
                             plugins: {
@@ -1148,7 +1557,7 @@ for ($i = 0; $i < 7; $i++) {
                                     text: 'Lead Status Distribution'
                                 }
                             }
-                        }
+                        })
                     });
                     console.log('✅ Leads chart loaded with real data:', leadsChart);
                 } catch (error) {
@@ -1421,15 +1830,38 @@ for ($i = 0; $i < 7; $i++) {
         });
         
         // Add animation delays for metric cards
-        document.querySelectorAll('.metric-card').forEach((card, index) => {
+        document.querySelectorAll('.kpi-card').forEach((card, index) => {
             card.style.animationDelay = `${index * 0.1}s`;
             card.classList.add('slide-up');
         });
+        
+        // Add hover effects to chart cards
+        document.querySelectorAll('.chart-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-5px)';
+                this.style.boxShadow = '0 20px 60px rgba(0,0,0,0.15)';
+            });
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+                this.style.boxShadow = '0 10px 40px rgba(0,0,0,0.1)';
+            });
+        });
     </script>
+
+            </div> <!-- End Dashboard Content -->
+        </div> <!-- End Main Content -->
+    </div> <!-- End Page Wrapper -->
     
-    <!-- Copyright Footer -->
-    <footer class="text-center py-3 mt-5" style="background-color: #f8f9fa; border-top: 1px solid #dee2e6;">
-        <small class="text-muted">Created by NOYB FUNDAMENTAL 2025 ©</small>
+    <!-- Modern Footer -->
+    <footer style="background: linear-gradient(135deg, #1e293b, #0f172a); color: #cbd5e1; padding: 2rem; text-align: center; margin-top: auto;">
+        <div style="display: flex; justify-content: center; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i class="bi bi-grid-3x3-gap-fill" style="color: #3b82f6; font-size: 1.25rem;"></i>
+                <span style="font-weight: 600; color: white;">BizAutoPro</span>
+            </div>
+            <span style="opacity: 0.6;">|</span>
+            <small style="opacity: 0.8;">Created by NOYB FUNDAMENTAL 2025 ©</small>
+        </div>
     </footer>
 </body>
 </html>

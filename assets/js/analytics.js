@@ -684,26 +684,123 @@ class AnalyticsDashboard {
     async filterDataByDateRange(range) {
         console.log('Filtering data for range:', range);
         
-        // Re-fetch data with new date range
+        // Show loading indicator
+        this.showLoadingState();
+        
         try {
-            const [revenue, leads] = await Promise.all([
+            // Re-fetch ALL chart data with new date range
+            const [revenue, inventory, leads, workflow, userActivity, performance, predictive, summary] = await Promise.all([
                 this.fetchAnalyticsData('revenue', range),
-                this.fetchAnalyticsData('leads', range)
+                this.fetchAnalyticsData('inventory', range),
+                this.fetchAnalyticsData('leads', range),
+                this.fetchAnalyticsData('workflows', range),
+                this.fetchAnalyticsData('user_activity', range),
+                this.fetchAnalyticsData('performance', range),
+                this.fetchAnalyticsData('predictive', range),
+                this.fetchAnalyticsData('dashboard_summary', range)
             ]);
 
-            // Update charts with filtered data
+            // Update ALL charts with filtered data
             if (revenue && this.charts.revenue) {
                 this.charts.revenue.data = revenue;
-                this.charts.revenue.update();
+                this.charts.revenue.update('active');
+            }
+
+            if (inventory && this.charts.inventory) {
+                this.charts.inventory.data = inventory;
+                this.charts.inventory.update('active');
             }
 
             if (leads && this.charts.leads) {
                 this.charts.leads.data = leads;
-                this.charts.leads.update();
+                this.charts.leads.update('active');
             }
+
+            if (workflow && this.charts.workflow) {
+                this.charts.workflow.data = workflow;
+                this.charts.workflow.update('active');
+            }
+
+            if (userActivity && this.charts.userActivity) {
+                this.charts.userActivity.data = userActivity;
+                this.charts.userActivity.update('active');
+            }
+
+            if (performance && this.charts.performance) {
+                this.charts.performance.data = performance;
+                this.charts.performance.update('active');
+            }
+
+            if (predictive && this.charts.predictive) {
+                this.charts.predictive.data = predictive;
+                this.charts.predictive.update('active');
+            }
+
+            // Update dashboard metrics/KPI cards
+            if (summary) {
+                this.updateDashboardMetrics(summary);
+            }
+
+            // Update any additional charts that might exist on the page
+            this.updateAdditionalCharts(range);
+            
+            console.log(`✅ All dashboard data updated for ${range} period`);
         } catch (error) {
             console.error('Error filtering data:', error);
+            this.showErrorState('Failed to load data for selected period');
+        } finally {
+            this.hideLoadingState();
         }
+    }
+
+    showLoadingState() {
+        // Add loading overlay to charts
+        document.querySelectorAll('.chart-container').forEach(container => {
+            if (!container.querySelector('.chart-loading')) {
+                const loading = document.createElement('div');
+                loading.className = 'chart-loading';
+                loading.innerHTML = `
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                                text-align: center; z-index: 1000; background: rgba(255,255,255,0.9); 
+                                padding: 1rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <div style="width: 20px; height: 20px; border: 2px solid #f3f3f3; border-top: 2px solid #4e73df; 
+                                   border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 0.5rem;"></div>
+                        <small>Updating...</small>
+                    </div>
+                `;
+                loading.style.cssText = 'position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000;';
+                container.style.position = 'relative';
+                container.appendChild(loading);
+            }
+        });
+    }
+
+    hideLoadingState() {
+        document.querySelectorAll('.chart-loading').forEach(loading => loading.remove());
+    }
+
+    showErrorState(message) {
+        console.error('Dashboard Error:', message);
+        // You could show a toast notification here if available
+        if (typeof Toast !== 'undefined') {
+            Toast.error(message);
+        }
+    }
+
+    updateAdditionalCharts(range) {
+        // Update any non-standard charts that might exist (workflow status, category performance, etc.)
+        const additionalChartIds = ['workflowStatusChart', 'priorityChart', 'categoryPerformanceChart'];
+        
+        additionalChartIds.forEach(chartId => {
+            const chart = Chart.getChart(chartId);
+            if (chart) {
+                // Trigger a refresh for these charts by dispatching a custom event
+                const event = new CustomEvent('dateRangeChanged', { 
+                    detail: { range: range, chartId: chartId } 
+                });
+                document.dispatchEvent(event);
+            }
+        });
     }
 
     getLast7Days() {

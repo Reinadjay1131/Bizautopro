@@ -350,42 +350,29 @@ $low_stock = $pdo->query("SELECT * FROM inventory WHERE quantity < reorder_level
     </style>
 </head>
 <body class="fade-in">
-    <!-- Modern Navigation -->
-    <nav class="modern-navbar">
-        <div class="modern-container">
-            <div class="navbar-content">
-                <a href="dashboard.php" class="brand">
-                    <i class="bi bi-grid-3x3-gap-fill"></i>
-                    BizAutoPro
-                </a>
-                <div class="nav-user">
-                    <span>Inventory Management</span>
-                    <a href="dashboard.php" class="btn-modern btn-secondary btn-sm">
-                        <i class="bi bi-arrow-left"></i>
-                        Dashboard
+    <!-- Include Responsive Header -->
+    <?php require_once 'includes/page-header.php'; ?>
+    
+    <!-- Main Content -->
+    <div class="modern-container mt-4">
                     </a>
                 </div>
+    
+    <!-- Main Content -->
+    <div class="modern-container mt-4">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-lg);" class="page-actions">
+            <div>
+                <p class="page-subtitle">Monitor stock levels, manage products, and track inventory</p>
             </div>
-        </div>
-    </nav>
-
-    <!-- Page Header -->
-    <div class="page-header">
-        <div class="modern-container">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-lg);" class="page-actions">
-                <div>
-                    <h1 class="page-title">Inventory Management</h1>
-                    <p class="page-subtitle">Monitor stock levels, manage products, and track inventory</p>
-                </div>
-                <div class="action-buttons">
-                    <a href="outbound.php" class="btn-modern btn-info">
-                        <i class="bi bi-box-arrow-up"></i>
-                        View Outbound
-                    </a>
-                    <a href="module_deduction.php" class="btn-modern btn-warning">
-                        <i class="bi bi-box-arrow-down"></i>
-                        Bulk Deduction
-                    </a>
+            <div class="action-buttons">
+                <a href="outbound.php" class="btn-modern btn-info">
+                    <i class="bi bi-box-arrow-up"></i>
+                    View Outbound
+                </a>
+                <a href="module_deduction.php" class="btn-modern btn-warning">
+                    <i class="bi bi-box-arrow-down"></i>
+                    Bulk Deduction
+                </a>
                     <a href="add_inventory.php" class="btn-modern btn-primary">
                         <i class="bi bi-plus-circle"></i>
                         Add New Item

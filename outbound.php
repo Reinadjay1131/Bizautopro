@@ -43,9 +43,14 @@ usort($allRecords, function($a, $b) {
     </style>
 </head>
 <body>
+    <!-- Include Responsive Header -->
+    <?php require_once 'includes/page-header.php'; ?>
+    
     <div class="container py-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2><i class="bi bi-box-arrow-up"></i> Outbound Inventory</h2>
+            <div>
+                <p class="text-muted">Track outbound inventory movements and sales</p>
+            </div>
             <a href="inventory.php" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left"></i> Back to Inventory
             </a>

@@ -17,13 +17,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>System Settings</title>
+    <title>System Settings - BizAutoPro</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 </head>
 <body>
-    <div class="container mt-4">
-        <h2>System Settings</h2>
-        
+    <!-- Include Responsive Header -->
+    <?php require_once 'includes/page-header.php'; ?>
+    
+    <div class="container mt-4">        
         <?php if (isset($_SESSION['alert'])): ?>
             <div class="alert alert-success"><?= $_SESSION['alert'] ?></div>
             <?php unset($_SESSION['alert']); ?>

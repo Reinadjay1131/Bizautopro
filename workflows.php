@@ -292,13 +292,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     </style>
 </head>
 <body>
+    <!-- Include Responsive Header -->
+    <?php require_once 'includes/page-header.php'; ?>
+    
     <div class="container mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <a href="dashboard.php" class="btn btn-secondary btn-sm me-2">
-                    <i class="bi bi-arrow-left"></i> <span class="d-none d-sm-inline">Back to Dashboard</span>
-                </a>
-                <h2 class="d-inline-block mb-0">Workflow Management</h2>
+                <p class="text-muted mb-2">Organize and track your business processes</p>
             </div>
             <?php 
             // Count overdue and due soon tasks

@@ -43,6 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception("Cannot deduct $quantity items of ID $item_id. Only {$product['quantity']} available.");
             }
             
+            $stock_before = $product['quantity'];
+            
             $pdo->prepare("UPDATE inventory SET quantity = quantity - ? WHERE id = ?")
                ->execute([$quantity, $item_id]);
             
@@ -79,6 +81,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($stmt->errorCode() !== '00000') {
                 throw new Exception("Failed to record $deduction_type: " . implode(", ", $stmt->errorInfo()));
             }
+            
+            // Auto-generate receipt for this deduction
+            $receipt_number = 'RCP-' . date('Ymd') . '-' . strtoupper(substr($deduction_type, 0, 3)) . '-' . str_pad($item_id, 5, '0', STR_PAD_LEFT) . '-' . time();
+            $stock_after = $stock_before - $quantity;
+            $total_amount = $price * $quantity;
+            
+            // Get user name
+            $user_stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+            $user_stmt->execute([$user_id]);
+            $user_name = $user_stmt->fetchColumn() ?: 'Unknown';
+            
+            // Store receipt data as JSON
+            $receipt_data = json_encode([
+                'deduction_type' => $deduction_type,
+                'timestamp' => date('Y-m-d H:i:s'),
+                'stock_movement' => [
+                    'before' => $stock_before,
+                    'deducted' => $quantity,
+                    'after' => $stock_after
+                ]
+            ]);
+            
+            // Insert receipt record
+            $receipt_stmt = $pdo->prepare("INSERT INTO receipts 
+                (receipt_number, transaction_type, inventory_id, product_name, sku, quantity, 
+                 unit_price, total_amount, stock_before, stock_after, reason, deducted_by, 
+                 deducted_by_name, receipt_data, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            
+            $receipt_stmt->execute([
+                $receipt_number,
+                $deduction_type === 'sales' ? 'sale' : $deduction_type,
+                $item_id,
+                $product['product_name'],
+                $product['sku'],
+                $quantity,
+                $price,
+                $total_amount,
+                $stock_before,
+                $stock_after,
+                $deduction_type,
+                $user_id,
+                $user_name,
+                $receipt_data
+            ]);
         }
         
         $pdo->commit();
@@ -203,6 +250,9 @@ error_log("Module Deduction - User: " . $_SESSION['username'] . " (" . $_SESSION
     </style>
 </head>
 <body>
+    <!-- Include Responsive Header -->
+    <?php require_once 'includes/page-header.php'; ?>
+    
     <div class="container py-4">
         <a href="<?= $_SESSION['role'] === 'admin' ? 'inventory.php' : 'dashboard_me.php' ?>" class="btn btn-outline-secondary mb-4">
             <i class="bi bi-arrow-left"></i> Back to <?= $_SESSION['role'] === 'admin' ? 'Inventory' : 'Dashboard' ?>
