@@ -17,7 +17,6 @@ $username = $_SESSION['username'] ?? 'User';
 $menu_items = [
     'admin' => [
         ['icon' => 'bi-speedometer2', 'text' => 'Dashboard', 'url' => 'dashboard.php', 'badge' => null],
-        ['icon' => 'bi-currency-dollar', 'text' => 'Revenue', 'url' => 'reports.php?view=revenue', 'badge' => null],
         ['icon' => 'bi-cash-register', 'text' => 'Point of Sale', 'url' => 'module_deduction.php', 'badge' => null],
         ['icon' => 'bi-boxes', 'text' => 'Inventory', 'url' => 'inventory.php', 'badge' => null],
         ['icon' => 'bi-receipt', 'text' => 'Receipts', 'url' => 'receipts.php', 'badge' => 'new'],
@@ -29,7 +28,6 @@ $menu_items = [
     ],
     'manager' => [
         ['icon' => 'bi-speedometer2', 'text' => 'Dashboard', 'url' => 'dashboard_me.php', 'badge' => null],
-        ['icon' => 'bi-currency-dollar', 'text' => 'Revenue', 'url' => 'reports.php?view=revenue', 'badge' => null],
         ['icon' => 'bi-cash-register', 'text' => 'Point of Sale', 'url' => 'module_deduction.php', 'badge' => null],
         ['icon' => 'bi-boxes', 'text' => 'Inventory', 'url' => 'inventory.php', 'badge' => null],
         ['icon' => 'bi-receipt', 'text' => 'Receipts', 'url' => 'receipts.php', 'badge' => 'new'],

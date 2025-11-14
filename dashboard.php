@@ -1611,6 +1611,10 @@ for ($i = 0; $i < 7; $i++) {
                                 y: {
                                     beginAtZero: true
                                 }
+                            },
+                            backgroundColor: 'transparent',
+                            onComplete: function(chart) {
+                                chart.canvas.style.backgroundColor = 'transparent';
                             }
                         }
                     });
@@ -1641,6 +1645,10 @@ for ($i = 0; $i < 7; $i++) {
                                     beginAtZero: true,
                                     max: 100
                                 }
+                            },
+                            backgroundColor: 'transparent',
+                            onComplete: function(chart) {
+                                chart.canvas.style.backgroundColor = 'transparent';
                             }
                         }
                     });
@@ -1675,6 +1683,10 @@ for ($i = 0; $i < 7; $i++) {
                                         }
                                     }
                                 }
+                            },
+                            backgroundColor: 'transparent',
+                            onComplete: function(chart) {
+                                chart.canvas.style.backgroundColor = 'transparent';
                             }
                         }
                     });
@@ -1720,6 +1732,10 @@ for ($i = 0; $i < 7; $i++) {
                                     beginAtZero: true,
                                     ticks: { stepSize: 1 }
                                 }
+                            },
+                            backgroundColor: 'transparent',
+                            onComplete: function(chart) {
+                                chart.canvas.style.backgroundColor = 'transparent';
                             }
                         }
                     });
@@ -1761,6 +1777,10 @@ for ($i = 0; $i < 7; $i++) {
                                     position: 'bottom',
                                     labels: { fontSize: 12 }
                                 }
+                            },
+                            backgroundColor: 'transparent',
+                            onComplete: function(chart) {
+                                chart.canvas.style.backgroundColor = 'transparent';
                             }
                         }
                     });
@@ -1806,6 +1826,10 @@ for ($i = 0; $i < 7; $i++) {
                                     beginAtZero: true,
                                     ticks: { stepSize: 1 }
                                 }
+                            },
+                            backgroundColor: 'transparent',
+                            onComplete: function(chart) {
+                                chart.canvas.style.backgroundColor = 'transparent';
                             }
                         }
                     });
