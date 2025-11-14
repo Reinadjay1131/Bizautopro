@@ -1311,7 +1311,6 @@ for ($i = 0; $i < 7; $i++) {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <!-- Analytics JavaScript -->
-    <script src="assets/js/theme-manager.js"></script>
     <script>
         // Enhanced Chart Animations and Loading Effects
         document.addEventListener('DOMContentLoaded', function() {
